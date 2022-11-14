@@ -28,7 +28,19 @@ Retrying with clang set to 10 but that didn't work.
 
 Turns out I need to edit a few files such as Setup.sh and manually set clang to 10. That works, back to carla-ros-bridge
 
+Okay I just restarted from scratch and got another error while building carla from source. I can either use master branch and change the Setup.sh script and others from clang8 to clang10 or use dev env
+Got error https://github.com/carla-simulator/carla/issues/5886
+to fix https://stackoverflow.com/questions/40790943/usr-bin-ld-cannot-find-lstdc-for-ubuntu-while-trying-to-swift-build-perfe,
+sudo ln -s /usr/lib/x86_64-linux-gnu/libstdc++.so.6 /usr/lib/libstdc++.so
+sudo ln -s /usr/lib/x86_64-linux-gnu/libstdc++.so.6 /usr/lib/libstdc++.so.6
 
+On master new error:
+CMake Error at cmake/modules/CheckCompilerVersion.cmake:72 (message):
+  libstdc++ version must be at least 4.8.
+
+  
+
+Trying dev
 
 Build:
 Carla -> CMake
@@ -48,6 +60,8 @@ Ok this is super confusing but here goes
 
 find the best way to get ros2 and start subbing to topics from carla-ros-bridge even though they dont exist. Maybe docker? 
 
+export CARLA_ROOT=/opt/carla-simulator
+export PYTHONPATH=$PYTHONPATH:$CARLA_ROOT/PythonAPI/carla/dist/carla-0.9.13-py3.7-linux-x86_64.egg:$CARLA_ROOT/PythonAPI/carla
 
 ## Installation
 
@@ -65,8 +79,21 @@ find the best way to get ros2 and start subbing to topics from carla-ros-bridge 
 - Unreal Engine: 
 - Carla: 
 
+You also will need simple-pid for manual control.
+
+`pip install --user simple-pid`
+
+Initially, the installed directory is not in the path, so I needed to add it to the path.
+
+`export PATH=$PATH:/home/mike/.local/lib/python3.7/site-packages`
 
 ## Running
 
-First, roscore must always be ran first
+Make sure to source the carla ros bridge enviornment
+
+`source /opt/carla-ros-bridge/melodic/setup.bash`
+
+I am starting by running the basic carla ros bridge with an ego vehicle. You can find more info about this in the [docs.](https://carla.readthedocs.io/en/0.9.9/ros_launchs/#carla_ego_vehiclelaunch)
+
+`roslaunch carla_ros_bridge carla_ros_bridge_with_rviz.launch`
 
