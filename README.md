@@ -93,10 +93,17 @@ Make sure to source the carla ros bridge enviornment
 
 `source /opt/carla-ros-bridge/melodic/setup.bash`
 
+Then make the catkin workspace
+
+`catkin_make`
+
+Then create the package
+
+`cd ~/<this project directory>/src`
+`catkin_create_pkg mike_av_stack std_msgs rospy`
+
+Now source devel/setup.bash and the current workspace will be a child of the parent carla_ros_bridge catkin workspace.
+
 I am starting by running the basic carla ros bridge with an ego vehicle. You can find more info about this in the [docs.](https://carla.readthedocs.io/en/0.9.9/ros_launchs/#carla_ego_vehiclelaunch)
 
 `roslaunch carla_ros_bridge carla_ros_bridge_with_rviz.launch`
-
-I need to figure out how to reference the carla ros bridge environment and include /opt/carla-ros-bridge/melodic/setup.bash in my devel/setup.bash script. 
-
-And in general set up the catkin workspace.
