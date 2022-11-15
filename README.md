@@ -97,3 +97,6 @@ I am starting by running the basic carla ros bridge with an ego vehicle. You can
 
 `roslaunch carla_ros_bridge carla_ros_bridge_with_rviz.launch`
 
+I need to figure out how to reference the carla ros bridge environment and include /opt/carla-ros-bridge/melodic/setup.bash in my devel/setup.bash script. 
+
+And in general set up the catkin workspace.

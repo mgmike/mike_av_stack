@@ -1,5 +1,6 @@
 Dockerfile
 build/
-src/carla_ros_bridge/CMakeLists.txt
+devel/
 install/
 log/
+src/ros_tutorials

@@ -1,4 +1,4 @@
 # Conda installs:
 # conda install -c conda-forge ros-rospy
 
-
+/media/mike/Storage/Documents/autonomous_sim/src:/opt/ros/melodic/share
