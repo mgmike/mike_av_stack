@@ -79,6 +79,11 @@ export PYTHONPATH=$PYTHONPATH:$CARLA_ROOT/PythonAPI/carla/dist/carla-0.9.13-py3.
 - Unreal Engine: 
 - Carla: 
 
+Follow (this guide)[https://www.dhanoopbhaskar.com/blog/2020-05-07-working-with-python-3-in-ros-kinetic-or-melodic/]
+to get melodic to run python3
+
+With that, I have an anaconda enviornment called waymo with all of the libraries needed for the sensor fusion part of the udacity course.
+
 You also will need simple-pid for manual control.
 
 `pip install --user simple-pid`
