@@ -1,3 +1,4 @@
 {
-    "cmake.sourceDirectory": "/media/mike/Storage/Documents/autonomous_sim/src"
+    "cmake.sourceDirectory": "/media/mike/Storage/Documents/autonomous_sim/src",
+    "python.analysis.typeCheckingMode": "basic"
 }

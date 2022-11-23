@@ -8,10 +8,16 @@ project(mike_av_stack)
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
 ## is used, also find other catkin packages
 find_package(catkin REQUIRED COMPONENTS
-  carla_ego_vehicle
   rospy
+  carla_ros_bridge
+  carla_ego_vehicle
+  carla_manual_control
   std_msgs
   sensor_msgs
+  vision_msgs
+  tf
+  tf2
+  ros_numpy
 )
 
 ## System dependencies are found with CMake's conventions

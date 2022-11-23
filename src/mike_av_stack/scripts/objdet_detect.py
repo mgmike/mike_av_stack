@@ -1,5 +1,18 @@
 #! ~/anaconda3/envs/waymo/bin/python
 
+# ---------------------------------------------------------------------
+# Project "Track 3D-Objects Over Time"
+# Copyright (C) 2020, Dr. Antje Muntzinger / Dr. Andreas Haja.
+#
+# Purpose of this file : Detect 3D objects in lidar point clouds using deep learning
+#
+# You should have received a copy of the Udacity license together with this program.
+#
+# https://www.udacity.com/course/self-driving-car-engineer-nanodegree--nd013
+# ----------------------------------------------------------------------
+#
+
+# general package imports
 import numpy as np
 import torch
 import time
@@ -17,40 +30,43 @@ from tools.objdet_models.resnet.models import fpn_resnet
 from tools.objdet_models.resnet.utils.evaluation_utils import decode, post_processing 
 from tools.objdet_models.resnet.utils.torch_utils import _sigmoid
 
+# from tools.objdet_models.darknet.models.darknet2pytorch import Darknet as darknet
+# from tools.objdet_models.darknet.utils.evaluation_utils import post_processing_v2
+
 
 # load model-related parameters into an edict
 def load_configs_model(model_name='darknet', configs=None):
 
     # init config file, if none has been passed
     if configs==None:
-        configs = edict()  
+        configs = edict()
 
     # get parent directory of this file to enable relative paths
     curr_path = os.path.dirname(os.path.realpath(__file__))
     parent_path = configs.model_path = os.path.abspath(os.path.join(curr_path, os.pardir))    
     
-    # set parameters according to model type
-    if model_name == "darknet":
-        configs.model_path = os.path.join(parent_path, 'tools', 'objdet_models', 'darknet')
-        configs.pretrained_filename = os.path.join(configs.model_path, 'pretrained', 'complex_yolov4_mse_loss.pth')
-        configs.arch = 'darknet'
-        configs.batch_size = 4
-        configs.cfgfile = os.path.join(configs.model_path, 'config', 'complex_yolov4.cfg')
-        configs.conf_thresh = 0.5
-        configs.num_classes = 3
-        configs.distributed = False
-        configs.img_size = 608
-        configs.nms_thresh = 0.4
-        configs.num_samples = None
-        configs.num_workers = 4
-        configs.pin_memory = True
-        configs.use_giou_loss = False
+    # # set parameters according to model type
+    # if model_name == "darknet":
+    #     configs.model_path = os.path.join(parent_path, 'tools', 'objdet_models', 'darknet')
+    #     configs.pretrained_filename = os.path.join(configs.model_path, 'pretrained', 'complex_yolov4_mse_loss.pth')
+    #     configs.arch = 'darknet'
+    #     configs.batch_size = 4
+    #     configs.cfgfile = os.path.join(configs.model_path, 'config', 'complex_yolov4.cfg')
+    #     configs.conf_thresh = 0.5
+    #     configs.num_classes = 3
+    #     configs.distributed = False
+    #     configs.img_size = 608
+    #     configs.nms_thresh = 0.4
+    #     configs.num_samples = None
+    #     configs.num_workers = 4
+    #     configs.pin_memory = True
+    #     configs.use_giou_loss = False
 
-    elif model_name == 'fpn_resnet':
+    if model_name == 'fpn_resnet':
         ####### ID_S3_EX1-3 START #######     
         #######
         print("student task ID_S3_EX1-3")
-        configs.model_path = os.path.join(parent_path, 'tools', 'objdet_models', 'resnet')
+        configs.model_path = os.path.join(parent_path, 'scripts', 'tools', 'objdet_models', 'resnet')
         configs.pretrained_filename = os.path.join(configs.model_path, 'pretrained', 'fpn_resnet_18_epoch_300.pth')
         configs.imagenet_pretrained = True
         configs.arch = 'fpn_resnet'
@@ -96,7 +112,7 @@ def load_configs_model(model_name='darknet', configs=None):
         raise ValueError("Error: Invalid model name")
 
     # GPU vs. CPU
-    configs.no_cuda = True # if true, cuda is not used
+    configs.no_cuda = False # if true, cuda is not used
     configs.gpu_idx = 0  # GPU index to use.
     configs.device = torch.device('cpu' if configs.no_cuda else 'cuda:{}'.format(configs.gpu_idx))
     
@@ -104,6 +120,7 @@ def load_configs_model(model_name='darknet', configs=None):
     configs.min_iou = 0.5
 
     return configs
+
 
 # load all object-detection parameters into an edict
 def load_configs(model_name='fpn_resnet', configs=None):
@@ -128,6 +145,45 @@ def load_configs(model_name='fpn_resnet', configs=None):
     configs.obj_colors = [[0, 255, 255], [0, 0, 255], [255, 0, 0]] # 'Pedestrian': 0, 'Car': 1, 'Cyclist': 2
 
     return configs
+
+
+# create model according to selected model type
+def create_model(configs):
+
+    # check for availability of model file
+    assert os.path.isfile(configs.pretrained_filename), "No file at {}".format(configs.pretrained_filename)
+
+    # create model depending on architecture name
+    # if (configs.arch == 'darknet') and (configs.cfgfile is not None):
+    #     print('Darknet not implemented yet')
+        # model = darknet(cfgfile=configs.cfgfile, use_giou_loss=configs.use_giou_loss)    
+    
+    if 'fpn_resnet' in configs.arch:
+        print('using ResNet architecture with feature pyramid')
+        
+        ####### ID_S3_EX1-4 START #######     
+        #######
+        print("student task ID_S3_EX1-4")
+        model = fpn_resnet.get_pose_net(num_layers=configs.num_layers, heads=configs.heads, head_conv=configs.head_conv,
+                                        imagenet_pretrained=configs.imagenet_pretrained)
+
+        #######
+        ####### ID_S3_EX1-4 END #######     
+    
+    else:
+        assert False, 'Undefined model backbone'
+
+    # load model weights
+    model.load_state_dict(torch.load(configs.pretrained_filename, map_location='cpu'))
+    print('Loaded weights from {}\n'.format(configs.pretrained_filename))
+
+    # set model to evaluation state
+    configs.device = torch.device('cpu' if configs.no_cuda else 'cuda:{}'.format(configs.gpu_idx))
+    model = model.to(device=configs.device)  # load model to either cpu or gpu
+    out_cap = None
+    model.eval()          
+
+    return model
 
 def time_synchronized():
     torch.cuda.synchronize() if torch.cuda.is_available() else None
@@ -211,8 +267,7 @@ def detect_objects(input_bev_maps, model, configs):
             ####### ID_S3_EX2 START #######     
             #######
             
-            ## detections contains an array of length 3 where index 0 pertains to a list of pidestrians, 
-            ## index 1 is a list of vehicles and index 2 is a list of cyclests. 
+            ## detections contains an array of length 3 where 0 pertains to pidestrians, 1 is vehicles and 2 is cyclests. 
             ## Each array can contain a list of detections
 
             ## step 2 : loop over all detections
