@@ -57,6 +57,8 @@ class SensorFusion:
         bev = pcl.bev_from_pcl(point_cloud_2d, self.configs )
         detections = odet.detect_objects(bev, self.model, self.configs)
 
+        print(len(detections))
+
         for det in detections:
             d3d = Detection3D()
             header = Header()
