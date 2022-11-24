@@ -1,4 +1,18 @@
 # Conda installs:
 # conda install -c conda-forge ros-rospy
 
+/media/mike/Storage/Documents/autonomous_sim/src:/opt/ros/melodic/share
 
+
+# Sensor fusion
+numpy
+opencv-python
+protobuf
+easydict
+torch
+pillow
+matplotlib
+wxpython
+shapely
+tqdm
+open3d
