@@ -3,3 +3,4 @@ build/
 install/
 log/
 src/ros_tutorials
+src/mike_av_stack/scripts/__pycache__
