@@ -9,6 +9,7 @@ project(mike_av_stack)
 ## is used, also find other catkin packages
 find_package(catkin REQUIRED COMPONENTS
   rospy
+  numpy
   carla_ros_bridge
   carla_ego_vehicle
   carla_manual_control
@@ -18,6 +19,13 @@ find_package(catkin REQUIRED COMPONENTS
   tf
   tf2
   ros_numpy
+  cv2
+  torch
+  open3d
+  time
+  easydict
+  os
+  sys
 )
 
 ## System dependencies are found with CMake's conventions
@@ -168,6 +176,7 @@ include_directories(
 ## in contrast to setup.py, you can choose the destination
 catkin_install_python(PROGRAMS
   scripts/sensor_fusion.py
+  scripts/traffic_manager.py
   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )
 

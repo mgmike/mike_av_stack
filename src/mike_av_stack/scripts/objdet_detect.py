@@ -132,7 +132,7 @@ def load_configs(model_name='fpn_resnet', configs=None):
     # birds-eye view (bev) parameters
     configs.lim_x = [0, 50] # detection range in m
     configs.lim_y = [-25, 25]
-    configs.lim_z = [-1, 3]
+    configs.lim_z = [-3.1, 2]
     configs.lim_r = [0, 1.0] # reflected lidar intensity
     configs.bev_width = 608  # pixel resolution of bev image
     configs.bev_height = 608 
@@ -207,11 +207,12 @@ def extract_3d_bb(det, configs, cls_id = 1):
         return [cls_id, x, y, z, _h, w, l, _yaw]
 
 # detect trained objects in birds-eye view
-def detect_objects(input_bev_maps, model, configs):
+def detect_objects(input_bev_maps, model, configs, verbose=False):
 
     
     # Extract 3d bounding boxes from model response
-    print("student task ID_S3_EX2")
+    if verbose:
+        print("student task ID_S3_EX2")
     objects = [] 
 
     # deactivate autograd engine during test to reduce memory usage and speed up computations
@@ -245,7 +246,8 @@ def detect_objects(input_bev_maps, model, configs):
             
             ####### ID_S3_EX1-5 START #######     
             #######
-            print("student task ID_S3_EX1-5")
+            if verbose:
+                print("student task ID_S3_EX1-5")
 
             # perform post-processing
 

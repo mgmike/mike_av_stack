@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/home/mike/anaconda3/envs/waymo/bin/python3
 
 import rospy
 import numpy as np
@@ -12,13 +12,19 @@ import tools.ros_conversions.transformations as transformations
 import ros_numpy
 
 class SensorFusion:
-    def __init__(self, model, configs):
-        self.verbose = True
-        self.model = model
+    def __init__(self, model, configs, verbose=False):
+        self.verbose = verbose
+        self.lidar_model = model
         self.configs = configs
         self.classes = ['']
+        rospy.loginfo('Setting up publishers')
         self.pub_detection = rospy.Publisher('/sensor_fusion/detection', Detection3D, queue_size=10)
         rospy.init_node("sensor_fusion", anonymous=True)
+
+
+        rospy.loginfo('Setting up listeners')
+        # rospy.Subscriber("/carla/ego_vehicle/camera/rgb/front/image_color", Image, sf.imgCallback)
+        rospy.Subscriber("/carla/ego_vehicle/lidar/lidar1/point_cloud", PointCloud2, self.pclCallback)
 
     def imgCallback(self, image):
         rospy.loginfo('Got an image')
@@ -52,12 +58,15 @@ class SensorFusion:
         return point_cloud_2d
 
     def pclCallback(self, pointCloud):
-        rospy.loginfo('Got pointcloud')
-        point_cloud_2d = self.get_point_cloud_2d(pointCloud)
-        bev = pcl.bev_from_pcl(point_cloud_2d, self.configs )
-        detections = odet.detect_objects(bev, self.model, self.configs)
+        if self.verbose:
+            rospy.loginfo('Got pointcloud')
 
-        print(len(detections))
+        point_cloud_2d = self.get_point_cloud_2d(pointCloud)
+        bev = pcl.bev_from_pcl(point_cloud_2d, self.configs)
+        detections = odet.detect_objects(bev, self.lidar_model, self.configs)
+
+        if self.verbose:
+            print(len(detections))
 
         for det in detections:
             d3d = Detection3D()
@@ -91,12 +100,7 @@ def main():
     model_det = odet.create_model(configs_det)
     sf = SensorFusion(model=model_det, configs=configs_det)
 
-    rospy.loginfo('Setting up publishers')
 
-    rospy.loginfo('Setting up listeners')
-
-    # rospy.Subscriber("/carla/ego_vehicle/camera/rgb/front/image_color", Image, sf.imgCallback)
-    rospy.Subscriber("/carla/ego_vehicle/lidar/lidar1/point_cloud", PointCloud2, sf.pclCallback)
     # spin() simply keeps python from exiting until this node is stopped
     rospy.spin()
 

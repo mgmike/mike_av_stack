@@ -45,6 +45,9 @@
   </include> -->
 
   <!-- My Sensor fusion node. -->
-  <!-- <include file="$(find mike_av_stack)/launch/sensor_fusion.launch"/> -->
+  <include file="$(find mike_av_stack)/launch/sensor_fusion.launch"/>
+
+  <!-- <include file="$(find mike_av_stack)/launch/traffic_manager.launch"/> -->
+
 
 </launch>
