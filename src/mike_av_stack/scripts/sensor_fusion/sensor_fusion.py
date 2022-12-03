@@ -6,8 +6,10 @@ from sensor_msgs.msg import Image, PointCloud2
 from std_msgs.msg import Header
 from vision_msgs.msg import BoundingBox3D, ObjectHypothesisWithPose, Detection3D
 from geometry_msgs.msg import Pose, Point, Vector3, Quaternion
-import objdet_pcl as pcl
-import objdet_detect as odet
+import detection.objdet_pcl as pcl
+import detection.objdet_detect as odet
+from tracking.trackmanagement import Trackmanagement
+from tracking.measurements import Sensor
 import tools.ros_conversions.transformations as transformations
 import ros_numpy
 
@@ -21,13 +23,13 @@ class SensorFusion:
         self.pub_detection = rospy.Publisher('/sensor_fusion/detection', Detection3D, queue_size=10)
         rospy.init_node("sensor_fusion", anonymous=True)
 
-
         rospy.loginfo('Setting up listeners')
         # rospy.Subscriber("/carla/ego_vehicle/camera/rgb/front/image_color", Image, sf.imgCallback)
         rospy.Subscriber("/carla/ego_vehicle/lidar/lidar1/point_cloud", PointCloud2, self.pclCallback)
 
     def imgCallback(self, image):
         rospy.loginfo('Got an image')
+
 
     def get_point_cloud_2d(self, pointcloud):
         # Convert the data from a 1d list of uint8s to a 2d list
@@ -92,13 +94,13 @@ class SensorFusion:
             d3d.results = [hyp]
             d3d.bbox = bbx
             self.pub_detection.publish(d3d)
-            
         
 
 def main():
     configs_det = odet.load_configs(model_name='fpn_resnet')
     model_det = odet.create_model(configs_det)
     sf = SensorFusion(model=model_det, configs=configs_det)
+    tm = Trackmanagement()
 
 
     # spin() simply keeps python from exiting until this node is stopped

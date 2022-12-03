@@ -1,4 +1,4 @@
-#! ~/anaconda3/envs/waymo/bin/python
+#!/home/mike/anaconda3/envs/waymo/bin/python3
 
 import numpy as np
 import cv2
@@ -14,7 +14,7 @@ def show_bev(bev_maps, configs):
     cv2.imshow('BEV map', bev_map)
       
     cv2.waitKey(0) 
-
+    
 
 # visualize lidar point-cloud
 def show_pcl(pcl):
@@ -227,5 +227,7 @@ def bev_from_pcl(lidar_pcl, configs, viz=False, verbose=False):
 
     bev_maps = torch.from_numpy(bev_maps)  # create tensor from birds-eye view
     input_bev_maps = bev_maps.to(configs.device, non_blocking=True).float()
+
+    # show_bev(input_bev_maps, configs)
 
     return input_bev_maps

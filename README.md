@@ -86,6 +86,9 @@ Next steps, I want to:
 - Move the rviz config file locally and clean it up a bit
 - Implement detection tracking
 - Implement image/camera detection
+- Auto start carla and traffic gen
+- Fix my traffic gen
+
 
 ## Installation Issues
 
