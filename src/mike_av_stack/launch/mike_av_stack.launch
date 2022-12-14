@@ -7,8 +7,10 @@
 
   <!-- Ego vehicle -->
   <arg name='role_name' default='ego_vehicle'/>
-  <arg name="vehicle_filter" default='vehicle.*'/>
-  <arg name="spawn_point" default=""/><!-- use comma separated format "x,y,z,roll,pitch,yaw" -->
+  <arg name="vehicle_filter" default='vehicle.audi.etron'/>
+  <arg name="sensor_definition_file" default="$(find mike_av_stack)/scripts/sensor_fusion/configs/sensors.json"/>
+  <arg name="spawn_point" default=""/>
+  <!-- use comma separated format "x,y,z,roll,pitch,yaw" -->
 
   <!-- Map to load on startup (either a predefined CARLA town (e.g. 'Town01'), or a OpenDRIVE map file) -->
   <arg name="town" default='Town03'/>
@@ -33,8 +35,9 @@
     <arg name='host' value='$(arg host)'/>
     <arg name='port' value='$(arg port)'/>
     <arg name='timeout' value='$(arg timeout)'/>
-    <arg name="vehicle_filter" value='$(arg vehicle_filter)'/>
     <arg name='role_name' value='$(arg role_name)'/>
+    <arg name="vehicle_filter" value='$(arg vehicle_filter)'/>
+    <arg name="sensor_definition_file" value='$(arg sensor_definition_file)'/>
     <arg name="spawn_point" value="$(arg spawn_point)"/>
   </include>
 
