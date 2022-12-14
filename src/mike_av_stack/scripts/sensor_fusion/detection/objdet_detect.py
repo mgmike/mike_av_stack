@@ -16,9 +16,10 @@
 import numpy as np
 import torch
 import time
-from easydict import EasyDict as edict
 import cv2
+import json
 
+from easydict import EasyDict as edict
 # add project directory to python path to enable relative imports
 import os
 import sys
@@ -27,91 +28,41 @@ SCRIPT_DIR = os.path.dirname(os.path.realpath(os.path.join(os.getcwd(), os.path.
 sys.path.append(os.path.normpath(os.path.join(SCRIPT_DIR, PACKAGE_PARENT)))
 
 # model-related
-from tools.objdet_models.resnet.models import fpn_resnet
-from tools.objdet_models.resnet.utils.evaluation_utils import decode, post_processing 
-from tools.objdet_models.resnet.utils.torch_utils import _sigmoid
+from objdet_models.resnet.utils.evaluation_utils import decode, post_processing 
+from objdet_models.resnet.utils.torch_utils import _sigmoid
+from objdet_models.resnet.models import fpn_resnet
 
 # from tools.objdet_models.darknet.models.darknet2pytorch import Darknet as darknet
 # from tools.objdet_models.darknet.utils.evaluation_utils import post_processing_v2
 
 
-# load model-related parameters into an edict
-def load_configs_model(model_name='darknet', configs=None):
-
-    # init config file, if none has been passed
-    if configs==None:
-        configs = edict()
-
+# load all object-detection parameters into an edict
+def load_configs(model_name='fpn_resnet'):
     # get parent directory of this file to enable relative paths
     curr_path = os.path.dirname(os.path.realpath(__file__))
-    parent_path = configs.model_path = os.path.abspath(os.path.join(curr_path, os.pardir))    
+    parent_path = os.path.abspath(os.path.join(curr_path, os.pardir))  
     
-    # # set parameters according to model type
-    # if model_name == "darknet":
-    #     configs.model_path = os.path.join(parent_path, 'tools', 'objdet_models', 'darknet')
-    #     configs.pretrained_filename = os.path.join(configs.model_path, 'pretrained', 'complex_yolov4_mse_loss.pth')
-    #     configs.arch = 'darknet'
-    #     configs.batch_size = 4
-    #     configs.cfgfile = os.path.join(configs.model_path, 'config', 'complex_yolov4.cfg')
-    #     configs.conf_thresh = 0.5
-    #     configs.num_classes = 3
-    #     configs.distributed = False
-    #     configs.img_size = 608
-    #     configs.nms_thresh = 0.4
-    #     configs.num_samples = None
-    #     configs.num_workers = 4
-    #     configs.pin_memory = True
-    #     configs.use_giou_loss = False
+    configs = edict()
 
-    if model_name == 'fpn_resnet':
-        ####### ID_S3_EX1-3 START #######     
-        #######
-        print("student task ID_S3_EX1-3")
-        configs.model_path = os.path.join(parent_path, 'scripts', 'tools', 'objdet_models', 'resnet')
-        configs.pretrained_filename = os.path.join(configs.model_path, 'pretrained', 'fpn_resnet_18_epoch_300.pth')
-        configs.imagenet_pretrained = True
-        configs.arch = 'fpn_resnet'
-        configs.num_layers = 18
-        configs.batch_size = 4
-        configs.K = 50
-        # configs.cfgfile = os.path.join(configs.model_path, 'config', 'complex_yolov4.cfg')
-        configs.conf_thresh = 0.5
-        configs.peak_thresh = 0.2
-        configs.distributed = False
-        configs.img_size = 608
-        configs.nms_thresh = 0.4
-        configs.num_samples = None
-        configs.num_workers = 1
-        configs.pin_memory = True
+    with open(os.path.join(parent_path, "configs", "bev.json")) as bevj_object:
+        configs = json.load(bevj_object)
 
-        configs.input_size = (608, 608)
-        configs.hm_size = (152, 152)
-        configs.down_ratio = 4
-        configs.max_objects = 50
+    print(configs)
 
-        configs.imagenet_pretrained = False
-        configs.head_conv = 64
-        configs.num_classes = 3
-        configs.num_center_offset = 2
-        configs.num_z = 1
-        configs.num_dim = 3
-        configs.num_direction = 2  # sin, cos
+    with open(os.path.join(parent_path, "configs", model_name, ".json")) as mj_object:
+        configs.update(json.load(mj_object))
+    configs.model_path = os.path.join(curr_path, 'objdet_models', model_name)
+    configs.pretrained_filename = os.path.join(configs.model_path, 'pretrained', configs.pretrained_filename)
+    if 'cfgfile' in configs.values():
+        configs.cfgfile = os.path.join(configs.model_path, 'config', configs.cfgfile)
 
-        configs.heads = {
-            'hm_cen': configs.num_classes,
-            'cen_offset': configs.num_center_offset,
-            'direction': configs.num_direction,
-            'z_coor': configs.num_z,
-            'dim': configs.num_dim
-        }
-        configs.num_input_features = 4
 
-        #######
-        ####### ID_S3_EX1-3 END #######     
+    with open(os.path.join(parent_path, "configs", "tracking.json")) as mj_object:
+        configs.update(json.load(mj_object))
 
-    else:
-        raise ValueError("Error: Invalid model name")
-
+    # visualization parameters
+    configs.output_width = 608 # width of result image (height may vary)
+    configs.obj_colors = [[0, 255, 255], [0, 0, 255], [255, 0, 0]] # 'Pedestrian': 0, 'Car': 1, 'Cyclist': 2
     # GPU vs. CPU
     configs.no_cuda = False # if true, cuda is not used
     configs.gpu_idx = 0  # GPU index to use.
@@ -119,31 +70,6 @@ def load_configs_model(model_name='darknet', configs=None):
     
     # Evaluation params
     configs.min_iou = 0.5
-
-    return configs
-
-
-# load all object-detection parameters into an edict
-def load_configs(model_name='fpn_resnet', configs=None):
-
-    # init config file, if none has been passed
-    if configs==None:
-        configs = edict()    
-
-    # birds-eye view (bev) parameters
-    configs.lim_x = [0, 50] # detection range in m
-    configs.lim_y = [-25, 25]
-    configs.lim_z = [-3.1, 2]
-    configs.lim_r = [0, 1.0] # reflected lidar intensity
-    configs.bev_width = 608  # pixel resolution of bev image
-    configs.bev_height = 608 
-
-    # add model-dependent parameters
-    configs = load_configs_model(model_name, configs)
-
-    # visualization parameters
-    configs.output_width = 608 # width of result image (height may vary)
-    configs.obj_colors = [[0, 255, 255], [0, 0, 255], [255, 0, 0]] # 'Pedestrian': 0, 'Car': 1, 'Cyclist': 2
 
     return configs
 

@@ -13,6 +13,7 @@ from tracking.measurements import Sensor
 import tools.ros_conversions.transformations as transformations
 import ros_numpy
 
+
 class SensorFusion:
     def __init__(self, model, configs, verbose=False):
         self.verbose = verbose
@@ -97,8 +98,16 @@ class SensorFusion:
         
 
 def main():
+    
     configs_det = odet.load_configs(model_name='fpn_resnet')
-    model_det = odet.create_model(configs_det)
+    model_det = odet.create_model(configs_det.model)
+
+    lidar_calibration = get_extrinsic_transform()
+
+    sensors = {}
+    sensors['lidar1'] = Sensor('lidar', lidar_calibration)
+
+    
     sf = SensorFusion(model=model_det, configs=configs_det)
     tm = Trackmanagement()
 

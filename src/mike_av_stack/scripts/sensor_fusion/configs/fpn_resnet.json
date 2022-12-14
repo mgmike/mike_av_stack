@@ -1,11 +1,10 @@
 {
     "arch":"fpn_resnet",
-    "pretrained_filename":"pretrained/fpn_resnet_18_epoch_300.pth",
+    "pretrained_filename":"fpn_resnet_18_epoch_300.pth",
     "imagenet_pretrained":true,
     "num_layers":18,
     "batch_size":4,
     "K":50,
-    "cfgfile":"config/complex_yolov4.cfg",
     "conf_thresh":0.5,
     "peak_thresh":0.2,
     "distributed":true,

@@ -22,9 +22,7 @@ import sys
 PACKAGE_PARENT = '..'
 SCRIPT_DIR = os.path.dirname(os.path.realpath(os.path.join(os.getcwd(), os.path.expanduser(__file__))))
 sys.path.append(os.path.normpath(os.path.join(SCRIPT_DIR, PACKAGE_PARENT)))
-import tracking_params as params 
 
-import tracking.tracking_params as params
 from tracking.filter import Filter
 from tracking.association import Association
 from tracking.trackmanagement import Trackmanagement
@@ -32,7 +30,8 @@ from tracking.measurements import Sensor, Measurement
 
 class Track:
     '''Track class with state, covariance, id, score'''
-    def __init__(self, meas, id):
+    def __init__(self, meas, id, params):
+        self.params = params
         print('creating track no.', id)
         M_rot = meas.sensor.sens_to_veh[0:3, 0:3] # rotation matrix from sensor to vehicle coordinates
         
@@ -102,7 +101,7 @@ class Track:
     def update_attributes(self, meas):
         # use exponential sliding average to estimate dimensions and orientation
         if meas.sensor.name == 'lidar':
-            c = params.weight_dim
+            c = self.params.weight_dim
             self.width = c*meas.width + (1 - c)*self.width
             self.length = c*meas.length + (1 - c)*self.length
             self.height = c*meas.height + (1 - c)*self.height
@@ -114,8 +113,9 @@ class Track:
 
 class Trackmanagement:
     '''Track manager with logic for initializing and deleting objects'''
-    def __init__(self, sensors):
+    def __init__(self, sensors, params):
         self.sensors = sensors
+        self.params = params
         self.N = 0 # current number of tracks
         self.track_list = []
         self.last_id = -1
@@ -132,7 +132,9 @@ class Trackmanagement:
     def detection_callback(self, detections):
         # predict
         for detection in detections:
-            meas = Measurement()
+            time = detection.header.stamp
+            frame_id = detection.header.frame_id
+            meas = Measurement(frame_id, )
             self.meas_list.append(meas)
         
     def manage_tracks(self, unassigned_tracks, unassigned_meas, meas_list):  
@@ -150,7 +152,7 @@ class Trackmanagement:
             u = self.track_list[i]
             if meas_list:
                 if meas_list[0].sensor.in_fov(u.x):
-                    u.score -= 1.0 / params.window
+                    u.score -= 1.0 / self.params.window
             # else: 
             #     u.score -= 1.0 / params.window
             if u.score <= 0.0:
@@ -158,8 +160,8 @@ class Trackmanagement:
 
         # delete old tracks   
         for track in self.track_list:
-            if ((track.state in ['confirmed'] and track.score < params.delete_threshold) or
-                    ((track.P[0, 0] > params.max_P or track.P[1, 1] > params.max_P)) or
+            if ((track.state in ['confirmed'] and track.score < self.params.delete_threshold) or
+                    ((track.P[0, 0] > self.params.max_P or track.P[1, 1] > self.params.max_P)) or
                     track.score < 0.05):
                 self.delete_track(track)
 
@@ -178,7 +180,7 @@ class Trackmanagement:
         self.last_id = track.id
 
     def init_track(self, meas):
-        track = Track(meas, self.last_id + 1)
+        track = Track(meas, self.last_id + 1, self.params)
         self.addTrackToList(track)
 
     def delete_track(self, track):
@@ -192,10 +194,10 @@ class Trackmanagement:
         # - set track state to 'tentative' or 'confirmed'
         ############
 
-        track.score += 1 / params.window
+        track.score += 1 / self.params.window
         track.score = min(1.0, track.score)
 
-        if track.score > params.confirmed_threshold:
+        if track.score > self.params.confirmed_threshold:
             track.state = 'confirmed'
         else:
             track.state = 'tentative'
