@@ -2,9 +2,10 @@
 
 import rospy
 import numpy as np
+import time
 from sensor_msgs.msg import Image, PointCloud2
 from std_msgs.msg import Header
-from vision_msgs.msg import BoundingBox3D, ObjectHypothesisWithPose, Detection3D
+from vision_msgs.msg import BoundingBox3D, ObjectHypothesisWithPose, Detection3D, Detection3DArray
 from geometry_msgs.msg import Pose, Point, Vector3, Quaternion
 import detection.objdet_pcl as pcl
 import detection.objdet_detect as odet
@@ -20,8 +21,9 @@ class SensorFusion:
         self.lidar_model = model
         self.configs = configs
         self.classes = ['']
+        self.frame_id = 0
         rospy.loginfo('Setting up publishers')
-        self.pub_detection = rospy.Publisher('/sensor_fusion/detection', Detection3D, queue_size=10)
+        self.pub_detection = rospy.Publisher('/sensor_fusion/detection', Detection3DArray, queue_size=10)
         rospy.init_node("sensor_fusion", anonymous=True)
 
         rospy.loginfo('Setting up listeners')
@@ -71,30 +73,31 @@ class SensorFusion:
         if self.verbose:
             print(len(detections))
 
+        dets = []
         for det in detections:
             d3d = Detection3D()
-            header = Header()
-            hyp = ObjectHypothesisWithPose()
-            bbx = BoundingBox3D()
-            pose = Pose()
-            pt = Point()
-            pt.x = det[1]
-            pt.y = det[2]
-            pt.z = det[3]
             q = transformations.euler_to_quaternion(0, 0, det[7])
             ori = Quaternion(q[0], q[1], q[2], q[3])
-            pose.position = pt
-            pose.orientation = ori
-            size = Vector3()
-            size.x = det[4]
-            size.y = det[5]
-            size.z = det[6]
-            bbx.center = pose
-            bbx.size = size
-            d3d.header = header
-            d3d.results = [hyp]
-            d3d.bbox = bbx
-            self.pub_detection.publish(d3d)
+            d3d.bbox.center.orientation = ori
+            d3d.bbox.center.position.x = det[1]
+            d3d.bbox.center.position.y = det[2]
+            d3d.bbox.center.position.z = det[3]
+            d3d.bbox.size.x = det[4]
+            d3d.bbox.size.y = det[5]
+            d3d.bbox.size.z = det[6]
+            dets.append(d3d)
+
+        time_now = time.time_ns()
+        header = Header()
+        self.frame_id += 1
+        header.frame_id = self.frame_id 
+        header.stamp.secs = int(time_now / 10e9)
+        header.stamp.nsecs = time_now - (header.stamp.secs * 10e9)
+        detection3DArray = Detection3DArray()
+        detection3DArray.header = Header() 
+        detection3DArray.header
+        detection3DArray.detections = dets
+        self.pub_detection.publish(detection3DArray)
         
 
 def main():
