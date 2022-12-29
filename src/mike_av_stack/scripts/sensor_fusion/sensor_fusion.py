@@ -8,7 +8,7 @@ from easydict import EasyDict as edict
 from sensor_msgs.msg import Image, PointCloud2
 from vision_msgs.msg import Detection3DArray
 # from tracking.trackmanagement import Trackmanagement
-from tracking.measurements import Sensor
+from tracking.measurements import Sensor, Lidar, Camera
 
 
 class SensorFusion:
@@ -16,17 +16,18 @@ class SensorFusion:
         self.verbose = verbose
         self.classes = ['']
         self.frame_id = 0
+        self.sensors = sensors
         rospy.init_node("sensor_fusion", anonymous=True)
 
-        for sensor in sensors:
-            if "base_topic" in sensor.configs:
-                base_topic = sensor.configs.base_topic
-                if sensor.name == 'lidar':
-                    rospy.Subscriber(base_topic, PointCloud2, sensor.pclCallback)
-                elif sensor.name == 'camera':
-                    rospy.Subscriber(base_topic, Image, sensor.imgCallback)
+    
 
-        
+def get_sensor(sensor):
+    name = sensor.type.split('.')[1]
+    name = sensor.type.split('.')[2] if 'other' in name else name
+    if name == 'lidar':
+        return Lidar(name, sensor)
+    elif name == 'camera':
+        return Camera(name, sensor)
 
 def main():
     
@@ -34,13 +35,14 @@ def main():
     parent_path = os.path.abspath(os.path.join(curr_path, os.pardir))  
     
     sensors_j = edict()
-
+    # Create edict json object of all the sensors in sensors.json
     with open(os.path.join(curr_path, 'configs', 'sensors.json')) as j_object:
         sensors_j.update(json.load(j_object))
 
-    print(sensors_j.sensors)
+    # print(sensors_j.sensors)
 
-    sensors = {sensor.id : Sensor(sensor) for sensor in sensors_j.sensors}
+    # Create list of Sensors
+    sensors = {sensor.id : get_sensor(sensor) for sensor in sensors_j.sensors}
     
     sf = SensorFusion(sensors)
     # tm = Trackmanagement(sensors)

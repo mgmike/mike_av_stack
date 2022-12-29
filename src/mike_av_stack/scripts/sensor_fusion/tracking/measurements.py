@@ -42,42 +42,22 @@ sys.path.append(os.path.normpath(os.path.join(SCRIPT_DIR, PACKAGE_PARENT)))
 
 class Sensor:
     '''Sensor class including measurement matrix'''
-    def __init__(self, configs, configs_track_management = None):
+    def __init__(self, name, configs, configs_track_management = None):
         self.verbose = True
         self.configs = configs
-        name = self.configs.type.split('.')[1]
-        self.name = self.configs.type.split('.')[2] if 'other' in name else name
+        self.name = name
 
-        self.configs.update(odet.load_configs())
-        # Change this so that configs is split up in to each type
-        self.model = odet.create_model(self.configs)
         self.frame_id = 0
-
+        
+        self.veh_to_sens = self.get_veh_to_sens()
 
         self.pub_detection = rospy.Publisher('/sensor_fusion/detection/' + self.configs.id, Detection3DArray, queue_size=10)
-
-        rospy.Subscriber(self.configs.base_topic, PointCloud2, self.pclCallback)
-
-        if self.name == 'lidar':
-            self.dim_meas = 3
-            self.sens_to_veh = np.matrix(np.identity((4))) # transformation sensor to vehicle coordinates equals identity matrix because lidar detections are already in vehicle coordinates
-            self.fov = [-np.pi/2, np.pi/2] # angle of field of view in radians
         
-        elif self.name == 'camera':
-            self.dim_meas = 2
-            if 'calib' not in self.configs :
-                rospy.loginfo('No calibration settings in the sensors.json file. Consider adding them')
-                return
+    def get_veh_to_sens(self) -> np.matrix:
+        """ return veh_to_sens"""
 
-            calib = self.configs.calib
-            self.sens_to_veh = np.matrix(calib.extrinsic.transform).reshape(4,4) # transformation sensor to vehicle coordinates
-            self.f_i = calib.intrinsic[0] # focal length i-coordinate
-            self.f_j = calib.intrinsic[1] # focal length j-coordinate
-            self.c_i = calib.intrinsic[2] # principal point i-coordinate
-            self.c_j = calib.intrinsic[3] # principal point j-coordinate
-            self.fov = [-0.35, 0.35] # angle of field of view in radians, inaccurate boundary region was removed
-            
-        self.veh_to_sens = np.linalg.inv(self.sens_to_veh) # transformation vehicle to sensor coordinates
+    def callback(self):
+        """ Override this for subscriber """
     
     def in_fov(self, x):
         # check if an object x can be seen by this sensor
@@ -96,112 +76,33 @@ class Sensor:
 
         return False
         
-        ############
-        # END student code
-        ############ 
              
     def get_hx(self, x):    
-        # calculate nonlinear measurement expectation value h(x)   
-        if self.name == 'lidar':
-            pos_veh = np.ones((4, 1)) # homogeneous coordinates
-            pos_veh[0:3] = x[0:3] 
-            pos_sens = self.veh_to_sens*pos_veh # transform from vehicle to lidar coordinates
-            return pos_sens[0:3]
-        elif self.name == 'camera':
-            
-            ############
-            # Step 4: implement nonlinear camera measurement function h:
-            # - transform position estimate from vehicle to camera coordinates
-            # - project from camera to image coordinates
-            # - make sure to not divide by zero, raise an error if needed
-            # - return h(x)
-            ############
+        """ calculate nonlinear measurement expectation value h(x) """
 
-            pos_veh = np.ones((4,1))
-            pos_veh[0:3] = x[0:3]
-            pos_sens = self.veh_to_sens * pos_veh
-
-            hx = np.zeros((self.dim_meas,1))
-            px, py, pz, _ = pos_sens
-
-            if px == 0:
-                raise NameError('Jacobain is not defined for px=0!')
-            else:
-                hx[0] = self.c_i - (self.f_i * py) / px
-                hx[1] = self.c_j - (self.f_j * pz) / px
-            
-            return hx            
-        
-            ############
-            # END student code
-            ############ 
         
     def get_H(self, x, params):
-        # calculate Jacobian H at current x from h(x)
-        H = np.matrix(np.zeros((self.dim_meas, params.dim_state)))
-        R = self.veh_to_sens[0:3, 0:3] # rotation
-        T = self.veh_to_sens[0:3, 3] # translation
-        if self.name == 'lidar':
-            H[0:3, 0:3] = R
-        elif self.name == 'camera':
-            # check and print error message if dividing by zero
-            if R[0,0]*x[0] + R[0,1]*x[1] + R[0,2]*x[2] + T[0] == 0: 
-                raise NameError('Jacobian not defined for this x!')
-            else:
-                H[0,0] = self.f_i * (-R[1,0] / (R[0,0]*x[0] + R[0,1]*x[1] + R[0,2]*x[2] + T[0])
-                                    + R[0,0] * (R[1,0]*x[0] + R[1,1]*x[1] + R[1,2]*x[2] + T[1]) \
-                                        / ((R[0,0]*x[0] + R[0,1]*x[1] + R[0,2]*x[2] + T[0])**2))
-                H[1,0] = self.f_j * (-R[2,0] / (R[0,0]*x[0] + R[0,1]*x[1] + R[0,2]*x[2] + T[0])
-                                    + R[0,0] * (R[2,0]*x[0] + R[2,1]*x[1] + R[2,2]*x[2] + T[2]) \
-                                        / ((R[0,0]*x[0] + R[0,1]*x[1] + R[0,2]*x[2] + T[0])**2))
-                H[0,1] = self.f_i * (-R[1,1] / (R[0,0]*x[0] + R[0,1]*x[1] + R[0,2]*x[2] + T[0])
-                                    + R[0,1] * (R[1,0]*x[0] + R[1,1]*x[1] + R[1,2]*x[2] + T[1]) \
-                                        / ((R[0,0]*x[0] + R[0,1]*x[1] + R[0,2]*x[2] + T[0])**2))
-                H[1,1] = self.f_j * (-R[2,1] / (R[0,0]*x[0] + R[0,1]*x[1] + R[0,2]*x[2] + T[0])
-                                    + R[0,1] * (R[2,0]*x[0] + R[2,1]*x[1] + R[2,2]*x[2] + T[2]) \
-                                        / ((R[0,0]*x[0] + R[0,1]*x[1] + R[0,2]*x[2] + T[0])**2))
-                H[0,2] = self.f_i * (-R[1,2] / (R[0,0]*x[0] + R[0,1]*x[1] + R[0,2]*x[2] + T[0])
-                                    + R[0,2] * (R[1,0]*x[0] + R[1,1]*x[1] + R[1,2]*x[2] + T[1]) \
-                                        / ((R[0,0]*x[0] + R[0,1]*x[1] + R[0,2]*x[2] + T[0])**2))
-                H[1,2] = self.f_j * (-R[2,2] / (R[0,0]*x[0] + R[0,1]*x[1] + R[0,2]*x[2] + T[0])
-                                    + R[0,2] * (R[2,0]*x[0] + R[2,1]*x[1] + R[2,2]*x[2] + T[2]) \
-                                        / ((R[0,0]*x[0] + R[0,1]*x[1] + R[0,2]*x[2] + T[0])**2))
-        return H   
+        """ calculate Jacobian H at current x from h(x) """
 
-    
-    def imgCallback(self, image):
-        rospy.loginfo('Got an image')
+class Lidar(Sensor):
+    def __init__(self, name, configs, configs_track_management=None):
+        super().__init__(name, configs, configs_track_management)
 
+        self.configs.update(odet.load_configs())
+        # Change this so that configs is split up in to each type
+        self.model = odet.create_model(self.configs)
 
-    def get_point_cloud_2d(self, pointcloud):
-        # Convert the data from a 1d list of uint8s to a 2d list
-        field_len = len(pointcloud.data)
+        # Set up ros subscriber
+        rospy.Subscriber(self.configs.base_topic, PointCloud2, self.callback)
 
-        point_cloud_2d = np.array([np.array(x.tolist()) for x in ros_numpy.point_cloud2.pointcloud2_to_array(pointcloud)])
-    
-        if self.verbose:
-            print("Shape of pc2d: ", point_cloud_2d.shape, " First element: ", type(point_cloud_2d[0]), point_cloud_2d[0])
-            print("First og: ", pointcloud.data[0], ", ", pointcloud.data[1], ", ", pointcloud.data[2], ", ", pointcloud.data[3])
-            print("height: %d, width: %d, length of data: %d" % (pointcloud.height, pointcloud.width, field_len))
-            for field in pointcloud.fields:
-                print("\tname: ", field.name, "offset: ", field.offset, "datatype: ", field.datatype, "count: ", field.count)
+    def get_veh_to_sens(self):
+        self.dim_meas = 3
+        self.sens_to_veh = np.matrix(np.identity((4))) # transformation sensor to vehicle coordinates equals identity matrix because lidar detections are already in vehicle coordinates
+        print(type(self.sens_to_veh))
+        self.fov = [-np.pi/2, np.pi/2] # angle of field of view in radians
+        return np.linalg.inv(self.sens_to_veh) # transformation vehicle to sensor coordinates
 
-        # TODO: Will need to transform to vehicle coordinate system
-
-        # perform coordinate conversion
-        # xyz_sensor = np.stack([x,y,z,np.ones_like(z)])
-        # xyz_vehicle = np.einsum('ij,jkl->ikl', extrinsic, xyz_sensor)
-        # xyz_vehicle = xyz_vehicle.transpose(1,2,0)
-
-        # transform 3d points into vehicle coordinate system
-        # pcl = xyz_vehicle[ri_range > 0,:3]
-        # pcd = o3d.geometry.PointCloud()
-        # pcd.points = o3d.utility.Vector3dVector(pcl)
-        # o3d.visualization.draw_geometries([pcd])
-
-        return point_cloud_2d
-
-    def pclCallback(self, pointCloud):
+    def callback(self, pointCloud):
         if self.verbose:
             rospy.loginfo('Got pointcloud')
 
@@ -237,9 +138,126 @@ class Sensor:
         detection3DArray.header
         detection3DArray.detections = dets
         self.pub_detection.publish(detection3DArray)
-    
-        
 
+    def get_point_cloud_2d(self, pointcloud):
+        # Convert the data from a 1d list of uint8s to a 2d list
+        field_len = len(pointcloud.data)
+
+        point_cloud_2d = np.array([np.array(x.tolist()) for x in ros_numpy.point_cloud2.pointcloud2_to_array(pointcloud)])
+    
+        if self.verbose:
+            print("Shape of pc2d: ", point_cloud_2d.shape, " First element: ", type(point_cloud_2d[0]), point_cloud_2d[0])
+            print("First og: ", pointcloud.data[0], ", ", pointcloud.data[1], ", ", pointcloud.data[2], ", ", pointcloud.data[3])
+            print("height: %d, width: %d, length of data: %d" % (pointcloud.height, pointcloud.width, field_len))
+            for field in pointcloud.fields:
+                print("\tname: ", field.name, "offset: ", field.offset, "datatype: ", field.datatype, "count: ", field.count)
+
+        # TODO: Will need to transform to vehicle coordinate system
+
+        # perform coordinate conversion
+        # xyz_sensor = np.stack([x,y,z,np.ones_like(z)])
+        # xyz_vehicle = np.einsum('ij,jkl->ikl', extrinsic, xyz_sensor)
+        # xyz_vehicle = xyz_vehicle.transpose(1,2,0)
+
+        # transform 3d points into vehicle coordinate system
+        # pcl = xyz_vehicle[ri_range > 0,:3]
+        # pcd = o3d.geometry.PointCloud()
+        # pcd.points = o3d.utility.Vector3dVector(pcl)
+        # o3d.visualization.draw_geometries([pcd])
+
+        return point_cloud_2d
+
+    def get_hx(self, x):
+        pos_veh = np.ones((4, 1)) # homogeneous coordinates
+        pos_veh[0:3] = x[0:3] 
+        pos_sens = self.veh_to_sens*pos_veh # transform from vehicle to lidar coordinates
+        return pos_sens[0:3]
+
+
+    def get_H(self, x, params):
+        H = np.matrix(np.zeros((self.dim_meas, params.dim_state)))
+        R = self.veh_to_sens[0:3, 0:3] # rotation
+        T = self.veh_to_sens[0:3, 3] # translation
+        H[0:3, 0:3] = R
+        return H
+    
+
+class Camera(Sensor):
+    def __init__(self, name, configs, configs_track_management=None):
+        super().__init__(name, configs, configs_track_management)
+        rospy.Subscriber(self.configs.base_topic, Image, self.callback)
+
+            
+    def get_veh_to_sens(self):
+
+        self.dim_meas = 2
+        if 'calib' not in self.configs :
+            rospy.loginfo('No calibration settings in the sensors.json file. Consider adding them')
+            return
+
+        calib = self.configs.calib
+        self.sens_to_veh = np.matrix(calib.extrinsic.transform).reshape(4,4) # transformation sensor to vehicle coordinates
+        self.f_i = calib.intrinsic[0] # focal length i-coordinate
+        self.f_j = calib.intrinsic[1] # focal length j-coordinate
+        self.c_i = calib.intrinsic[2] # principal point i-coordinate
+        self.c_j = calib.intrinsic[3] # principal point j-coordinate
+        self.fov = [-0.35, 0.35] # angle of field of view in radians, inaccurate boundary region was removed
+        return np.linalg.inv(self.sens_to_veh) # transformation vehicle to sensor coordinates
+        
+    def callback(self, image):
+        rospy.loginfo('Got an image')
+    
+    def get_hx(self, x):
+        ############
+        # Step 4: implement nonlinear camera measurement function h:
+        # - transform position estimate from vehicle to camera coordinates
+        # - project from camera to image coordinates
+        # - make sure to not divide by zero, raise an error if needed
+        # - return h(x)
+        ############
+
+        pos_veh = np.ones((4,1))
+        pos_veh[0:3] = x[0:3]
+        pos_sens = self.veh_to_sens * pos_veh
+
+        hx = np.zeros((self.dim_meas,1))
+        px, py, pz, _ = pos_sens
+
+        if px == 0:
+            raise NameError('Jacobain is not defined for px=0!')
+        else:
+            hx[0] = self.c_i - (self.f_i * py) / px
+            hx[1] = self.c_j - (self.f_j * pz) / px
+        
+        return hx  
+
+    def get_H(self, x, params):
+        H = np.matrix(np.zeros((self.dim_meas, params.dim_state)))
+        R = self.veh_to_sens[0:3, 0:3] # rotation
+        T = self.veh_to_sens[0:3, 3] # translation
+        # check and print error message if dividing by zero
+        if R[0,0]*x[0] + R[0,1]*x[1] + R[0,2]*x[2] + T[0] == 0: 
+            raise NameError('Jacobian not defined for this x!')
+        else:
+            H[0,0] = self.f_i * (-R[1,0] / (R[0,0]*x[0] + R[0,1]*x[1] + R[0,2]*x[2] + T[0])
+                                + R[0,0] * (R[1,0]*x[0] + R[1,1]*x[1] + R[1,2]*x[2] + T[1]) \
+                                    / ((R[0,0]*x[0] + R[0,1]*x[1] + R[0,2]*x[2] + T[0])**2))
+            H[1,0] = self.f_j * (-R[2,0] / (R[0,0]*x[0] + R[0,1]*x[1] + R[0,2]*x[2] + T[0])
+                                + R[0,0] * (R[2,0]*x[0] + R[2,1]*x[1] + R[2,2]*x[2] + T[2]) \
+                                    / ((R[0,0]*x[0] + R[0,1]*x[1] + R[0,2]*x[2] + T[0])**2))
+            H[0,1] = self.f_i * (-R[1,1] / (R[0,0]*x[0] + R[0,1]*x[1] + R[0,2]*x[2] + T[0])
+                                + R[0,1] * (R[1,0]*x[0] + R[1,1]*x[1] + R[1,2]*x[2] + T[1]) \
+                                    / ((R[0,0]*x[0] + R[0,1]*x[1] + R[0,2]*x[2] + T[0])**2))
+            H[1,1] = self.f_j * (-R[2,1] / (R[0,0]*x[0] + R[0,1]*x[1] + R[0,2]*x[2] + T[0])
+                                + R[0,1] * (R[2,0]*x[0] + R[2,1]*x[1] + R[2,2]*x[2] + T[2]) \
+                                    / ((R[0,0]*x[0] + R[0,1]*x[1] + R[0,2]*x[2] + T[0])**2))
+            H[0,2] = self.f_i * (-R[1,2] / (R[0,0]*x[0] + R[0,1]*x[1] + R[0,2]*x[2] + T[0])
+                                + R[0,2] * (R[1,0]*x[0] + R[1,1]*x[1] + R[1,2]*x[2] + T[1]) \
+                                    / ((R[0,0]*x[0] + R[0,1]*x[1] + R[0,2]*x[2] + T[0])**2))
+            H[1,2] = self.f_j * (-R[2,2] / (R[0,0]*x[0] + R[0,1]*x[1] + R[0,2]*x[2] + T[0])
+                                + R[0,2] * (R[2,0]*x[0] + R[2,1]*x[1] + R[2,2]*x[2] + T[2]) \
+                                    / ((R[0,0]*x[0] + R[0,1]*x[1] + R[0,2]*x[2] + T[0])**2))
+        return H   
         
 class Measurement:
     '''Measurement class including measurement values, covariance, timestamp, sensor'''
