@@ -7,7 +7,7 @@ from easydict import EasyDict as edict
 
 from sensor_msgs.msg import Image, PointCloud2
 from vision_msgs.msg import Detection3DArray
-from tracking.trackmanagement import Trackmanagement
+# from tracking.trackmanagement import Trackmanagement
 from tracking.measurements import Sensor
 
 
@@ -36,12 +36,14 @@ def main():
     sensors_j = edict()
 
     with open(os.path.join(curr_path, 'configs', 'sensors.json')) as j_object:
-        sensors_j = json.load(j_object)
+        sensors_j.update(json.load(j_object))
 
-    sensors = {sensor.id : Sensor(sensor) for sensor in sensors_j}
+    print(sensors_j.sensors)
+
+    sensors = {sensor.id : Sensor(sensor) for sensor in sensors_j.sensors}
     
     sf = SensorFusion(sensors)
-    tm = Trackmanagement(sensors)
+    # tm = Trackmanagement(sensors)
 
 
     # spin() simply keeps python from exiting until this node is stopped

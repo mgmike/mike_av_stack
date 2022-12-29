@@ -23,14 +23,17 @@ from easydict import EasyDict as edict
 # add project directory to python path to enable relative imports
 import os
 import sys
+dir_detection = os.path.dirname(os.path.realpath(__file__))
+sys.path.append(dir_detection)
+
 PACKAGE_PARENT = '..'
 SCRIPT_DIR = os.path.dirname(os.path.realpath(os.path.join(os.getcwd(), os.path.expanduser(__file__))))
 sys.path.append(os.path.normpath(os.path.join(SCRIPT_DIR, PACKAGE_PARENT)))
 
 # model-related
-from objdet_models.resnet.utils.evaluation_utils import decode, post_processing 
-from objdet_models.resnet.utils.torch_utils import _sigmoid
-from objdet_models.resnet.models import fpn_resnet
+from objdet_models.fpn_resnet.utils.evaluation_utils import decode, post_processing 
+from objdet_models.fpn_resnet.utils.torch_utils import _sigmoid
+import objdet_models.fpn_resnet.models.fpn_resnet as fpn_resnet
 
 # from tools.objdet_models.darknet.models.darknet2pytorch import Darknet as darknet
 # from tools.objdet_models.darknet.utils.evaluation_utils import post_processing_v2
@@ -45,11 +48,11 @@ def load_configs(model_name='fpn_resnet'):
     configs = edict()
 
     with open(os.path.join(parent_path, "configs", "bev.json")) as bevj_object:
-        configs = json.load(bevj_object)
+        configs.update(json.load(bevj_object))
 
     print(configs)
 
-    with open(os.path.join(parent_path, "configs", model_name, ".json")) as mj_object:
+    with open(os.path.join(parent_path, "configs", model_name + ".json")) as mj_object:
         configs.update(json.load(mj_object))
     configs.model_path = os.path.join(curr_path, 'objdet_models', model_name)
     configs.pretrained_filename = os.path.join(configs.model_path, 'pretrained', configs.pretrained_filename)
@@ -78,7 +81,7 @@ def load_configs(model_name='fpn_resnet'):
 def create_model(configs):
 
     # check for availability of model file
-    assert os.path.isfile(configs.pretrained_filename), "No file at {}".format(configs.pretrained_filename)
+    # assert os.path.isfile(configs.pretrained_filename), "No file at {}".format(configs.pretrained_filename)
 
     # create model depending on architecture name
     # if (configs.arch == 'darknet') and (configs.cfgfile is not None):

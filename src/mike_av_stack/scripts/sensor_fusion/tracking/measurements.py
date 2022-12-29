@@ -24,6 +24,12 @@ import detection.objdet_detect as odet
 import numpy as np
 import time
 
+import os
+import sys
+dir_tracking = os.path.dirname(os.path.realpath(__file__))
+dir_sf = os.path.dirname(dir_tracking)
+dir_scripts = os.path.dirname(dir_sf)
+sys.path.append(dir_scripts)
 import tools.ros_conversions.transformations as transformations
 import ros_numpy
 
