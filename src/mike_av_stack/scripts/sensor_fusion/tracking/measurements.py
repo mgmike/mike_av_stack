@@ -48,33 +48,14 @@ class Sensor:
         self.name = name
 
         self.frame_id = 0
-        
-        self.veh_to_sens = self.get_veh_to_sens()
 
         self.pub_detection = rospy.Publisher('/sensor_fusion/detection/' + self.configs.id, Detection3DArray, queue_size=10)
-        
-    def get_veh_to_sens(self) -> np.matrix:
-        """ return veh_to_sens"""
 
     def callback(self):
         """ Override this for subscriber """
     
     def in_fov(self, x):
-        # check if an object x can be seen by this sensor
-        ############
-        # Step 4: implement a function that returns True if x lies in the sensor's field of view, 
-        # otherwise False.
-        ############
-
-        x_s = x[0:4]
-        x_s[3] = 1
-        x_v = self.veh_to_sens * x_s
-        if x_v[0] != 0:
-            alpha = np.arctan(x_v[1] / x_v[0])
-            if alpha > self.fov[0] and alpha < self.fov[1]:
-                return True
-
-        return False
+        """ check if an object x can be seen by this sensor """
         
              
     def get_hx(self, x):    
@@ -89,18 +70,18 @@ class Lidar(Sensor):
         super().__init__(name, configs, configs_track_management)
 
         self.configs.update(odet.load_configs())
-        # Change this so that configs is split up in to each type
         self.model = odet.create_model(self.configs)
+
+        # Set up transforms
+        self.sens_to_veh = np.matrix(np.identity((4))) # transformation sensor to vehicle coordinates equals identity matrix because lidar detections are already in vehicle coordinates
+        print(type(self.sens_to_veh))
+        self.veh_to_sens = np.linalg.inv(self.sens_to_veh) # transformation vehicle to sensor coordinates
 
         # Set up ros subscriber
         rospy.Subscriber(self.configs.base_topic, PointCloud2, self.callback)
-
-    def get_veh_to_sens(self):
-        self.dim_meas = 3
-        self.sens_to_veh = np.matrix(np.identity((4))) # transformation sensor to vehicle coordinates equals identity matrix because lidar detections are already in vehicle coordinates
-        print(type(self.sens_to_veh))
         self.fov = [-np.pi/2, np.pi/2] # angle of field of view in radians
-        return np.linalg.inv(self.sens_to_veh) # transformation vehicle to sensor coordinates
+        self.dim_meas = 3
+        
 
     def callback(self, pointCloud):
         if self.verbose:
@@ -167,6 +148,17 @@ class Lidar(Sensor):
 
         return point_cloud_2d
 
+    def in_fov(self, x):
+        x_s = x[0:4]
+        x_s[3] = 1
+        x_v = self.veh_to_sens * x_s
+        if x_v[0] != 0:
+            alpha = np.arctan(x_v[1] / x_v[0])
+            if alpha > self.fov[0] and alpha < self.fov[1]:
+                return True
+
+        return False
+
     def get_hx(self, x):
         pos_veh = np.ones((4, 1)) # homogeneous coordinates
         pos_veh[0:3] = x[0:3] 
@@ -186,9 +178,7 @@ class Camera(Sensor):
     def __init__(self, name, configs, configs_track_management=None):
         super().__init__(name, configs, configs_track_management)
         rospy.Subscriber(self.configs.base_topic, Image, self.callback)
-
-            
-    def get_veh_to_sens(self):
+        self.fov = [-0.35, 0.35] # angle of field of view in radians, inaccurate boundary region was removed
 
         self.dim_meas = 2
         if 'calib' not in self.configs :
@@ -196,13 +186,15 @@ class Camera(Sensor):
             return
 
         calib = self.configs.calib
+
         self.sens_to_veh = np.matrix(calib.extrinsic.transform).reshape(4,4) # transformation sensor to vehicle coordinates
         self.f_i = calib.intrinsic[0] # focal length i-coordinate
         self.f_j = calib.intrinsic[1] # focal length j-coordinate
         self.c_i = calib.intrinsic[2] # principal point i-coordinate
         self.c_j = calib.intrinsic[3] # principal point j-coordinate
-        self.fov = [-0.35, 0.35] # angle of field of view in radians, inaccurate boundary region was removed
-        return np.linalg.inv(self.sens_to_veh) # transformation vehicle to sensor coordinates
+
+        self.veh_to_sens = np.linalg.inv(self.sens_to_veh) # transformation vehicle to sensor coordinates
+
         
     def callback(self, image):
         rospy.loginfo('Got an image')
