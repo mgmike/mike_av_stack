@@ -81,49 +81,82 @@ class Lidar(Sensor):
         rospy.Subscriber(self.configs.base_topic, PointCloud2, self.callback)
         self.fov = [-np.pi/2, np.pi/2] # angle of field of view in radians
         self.dim_meas = 3
-        
 
-    def callback(self, pointCloud):
+        self.configs.rotation_time = 4.0 / self.configs.rotation_frequency
+        self.first_pcl_time = 0
+        self.pcl_combined = None
+        
+    # callback will have to be async
+    # Will need to add a mutex to pcl_combined and last_pcl_time
+    def callback(self, point_cloud):
         if self.verbose:
             rospy.loginfo('Got pointcloud')
 
-        point_cloud_2d = self.get_point_cloud_2d(pointCloud)
-        bev = pcl.bev_from_pcl(point_cloud_2d, self.configs)
-        detections = odet.detect_objects(bev, self.model, self.configs)
+        point_cloud_2d = self.get_point_cloud_2d(point_cloud)
 
-        if self.verbose:
-            print(len(detections))
 
-        dets = []
-        for det in detections:
-            d3d = Detection3D()
-            q = transformations.euler_to_quaternion(0, 0, det[7])
-            ori = Quaternion(q[0], q[1], q[2], q[3])
-            d3d.bbox.center.orientation = ori
-            d3d.bbox.center.position.x = det[1]
-            d3d.bbox.center.position.y = det[2]
-            d3d.bbox.center.position.z = det[3]
-            d3d.bbox.size.x = det[4]
-            d3d.bbox.size.y = det[5]
-            d3d.bbox.size.z = det[6]
-            dets.append(d3d)
+        # Combine pcls until a full 360 point cloud is created
+        # The point cloud time could be different depending on the type of data. So just use its first measurement
+        # Last_pcl_time will be a float of seconds
+        pcl_time = point_cloud.header.stamp.secs + (point_cloud.header.stamp.nsecs / 1000000000)
 
-        time_now = time.time_ns()
-        header = Header()
-        self.frame_id += 1
-        header.frame_id = self.frame_id 
-        header.stamp.secs = int(time_now / 10e9)
-        header.stamp.nsecs = time_now - (header.stamp.secs * 10e9)
-        detection3DArray = Detection3DArray()
-        detection3DArray.header = Header() 
-        detection3DArray.header
-        detection3DArray.detections = dets
-        self.pub_detection.publish(detection3DArray)
+        info_string = 'first pcl time: ' + str(self.first_pcl_time) + ' rotation time: ' + str(self.configs.rotation_time) + ' pcl time: ' + str(pcl_time)
+        rospy.loginfo(info_string)
+
+        # This is the first new pcl
+        if self.pcl_combined is None:
+            self.first_pcl_time = pcl_time
+            self.pcl_combined = point_cloud_2d
+            rospy.loginfo('Starting new combined pcl')
+            return
+        # This is one of many combinations
+        else:
+            print('shape of combined', self.pcl_combined.shape, 'shape of new pcl', point_cloud_2d.shape)
+            self.pcl_combined = np.append(self.pcl_combined, point_cloud_2d, axis=0)
+            rospy.loginfo('Combining pcl')
+
+
+        if self.first_pcl_time + self.configs.rotation_time < pcl_time :
+
+            rospy.loginfo('Getting detection of full pcl')
+            bev = pcl.bev_from_pcl(self.pcl_combined, self.configs)
+            detections = odet.detect_objects(bev, self.model, self.configs)
+
+            if self.verbose:
+                print(len(detections))
+
+            dets = []
+            for det in detections:
+                d3d = Detection3D()
+                q = transformations.euler_to_quaternion(0, 0, det[7])
+                ori = Quaternion(q[0], q[1], q[2], q[3])
+                d3d.bbox.center.orientation = ori
+                d3d.bbox.center.position.x = det[1]
+                d3d.bbox.center.position.y = det[2]
+                d3d.bbox.center.position.z = det[3]
+                d3d.bbox.size.x = det[4]
+                d3d.bbox.size.y = det[5]
+                d3d.bbox.size.z = det[6]
+                dets.append(d3d)
+
+            time_now = time.time_ns()
+            header = Header()
+            self.frame_id += 1
+            header.frame_id = self.frame_id 
+            header.stamp.secs = int(time_now / 10e9)
+            header.stamp.nsecs = time_now - (header.stamp.secs * 10e9)
+            detection3DArray = Detection3DArray()
+            detection3DArray.header = Header() 
+            detection3DArray.header
+            detection3DArray.detections = dets
+            self.pub_detection.publish(detection3DArray)
+            self.pcl_combined = None
 
     def get_point_cloud_2d(self, pointcloud):
         # Convert the data from a 1d list of uint8s to a 2d list
         field_len = len(pointcloud.data)
 
+        # The result of this is <vector<vector>> where [[]]
         point_cloud_2d = np.array([np.array(x.tolist()) for x in ros_numpy.point_cloud2.pointcloud2_to_array(pointcloud)])
     
         if self.verbose:
