@@ -17,15 +17,17 @@ from scipy.stats.distributions import chi2
 # add project directory to python path to enable relative imports
 import os
 import sys
-PACKAGE_PARENT = '..'
-SCRIPT_DIR = os.path.dirname(os.path.realpath(os.path.join(os.getcwd(), os.path.expanduser(__file__))))
-sys.path.append(os.path.normpath(os.path.join(SCRIPT_DIR, PACKAGE_PARENT)))
+dir_tracking = os.path.dirname(os.path.realpath(__file__))
+dir_sf = os.path.dirname(dir_tracking)
+dir_scripts = os.path.dirname(dir_sf)
+sys.path.append(dir_scripts)
+sys.path.append(dir_sf)
 
-import tracking_params as params 
 
 class Association:
     '''Data association class with single nearest neighbor association and gating based on Mahalanobis distance'''
-    def __init__(self):
+    def __init__(self, params):
+        self.params = params
         self.association_matrix = np.matrix([])
         self.unassigned_tracks = []
         self.unassigned_meas = []
@@ -95,7 +97,7 @@ class Association:
         # Step 3: return True if measurement lies inside gate, otherwise False
         ############
         
-        limit = chi2.ppf(params.gating_threshold, sensor.dim_meas)
+        limit = chi2.ppf(self.params.gating_threshold, sensor.dim_meas)
         if MHD < limit:
             return True
         else:

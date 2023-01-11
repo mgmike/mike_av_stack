@@ -9,6 +9,7 @@ from sensor_msgs.msg import Image, PointCloud2
 from vision_msgs.msg import Detection3DArray
 # from tracking.trackmanagement import Trackmanagement
 from tracking.measurements import Sensor, Lidar, Camera
+from tracking.trackmanagement import Trackmanagement
 
 
 class SensorFusion:
@@ -45,7 +46,7 @@ def main():
     sensors = {sensor.id : get_sensor(sensor) for sensor in sensors_j.sensors}
     
     sf = SensorFusion(sensors)
-    # tm = Trackmanagement(sensors)
+    tm = Trackmanagement(sensors)
 
 
     # spin() simply keeps python from exiting until this node is stopped

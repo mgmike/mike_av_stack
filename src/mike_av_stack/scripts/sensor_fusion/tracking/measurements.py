@@ -33,12 +33,6 @@ sys.path.append(dir_scripts)
 import tools.ros_conversions.transformations as transformations
 import ros_numpy
 
-# add project directory to python path to enable relative imports
-import os
-import sys
-PACKAGE_PARENT = '..'
-SCRIPT_DIR = os.path.dirname(os.path.realpath(os.path.join(os.getcwd(), os.path.expanduser(__file__))))
-sys.path.append(os.path.normpath(os.path.join(SCRIPT_DIR, PACKAGE_PARENT)))
 
 class Sensor:
     '''Sensor class including measurement matrix'''
@@ -286,7 +280,7 @@ class Camera(Sensor):
         
 class Measurement:
     '''Measurement class including measurement values, covariance, timestamp, sensor'''
-    def __init__(self, num_frame, z, sensor, params):
+    def __init__(self, num_frame, detection, sensor, params):
         # create measurement object
         self.t = (num_frame - 1) * params.dt # time
         self.sensor = sensor # sensor that generated this measurement
@@ -296,17 +290,17 @@ class Measurement:
             sigma_lidar_y = params.sigma_lidar_y
             sigma_lidar_z = params.sigma_lidar_z
             self.z = np.zeros((sensor.dim_meas,1)) # measurement vector
-            self.z[0] = z[0]
-            self.z[1] = z[1]
-            self.z[2] = z[2]
+            self.z[0] = detection.bbox.center.position.x
+            self.z[1] = detection.bbox.center.position.y
+            self.z[2] = detection.bbox.center.position.z
             self.R = np.matrix([[sigma_lidar_x**2, 0, 0], # measurement noise covariance matrix
                                 [0, sigma_lidar_y**2, 0], 
                                 [0, 0, sigma_lidar_z**2]])
             
-            self.width = z[4]
-            self.length = z[5]
-            self.height = z[3]
-            self.yaw = z[6]
+            self.width = detection.bbox.size.x
+            self.length = detection.bbox.size.y
+            self.height = detection.bbox.size.z
+            self.yaw = transformations.quaternion_to_euiler(detection.bbox.center.orientation)
         elif sensor.name == 'camera':
             
             ############
@@ -316,14 +310,10 @@ class Measurement:
             sigma_cam_i = params.sigma_cam_i # load params
             sigma_cam_j = params.sigma_cam_j
             self.z = np.zeros((sensor.dim_meas, 1))
-            self.z[0] = z[0]
-            self.z[1] = z[1]
-            self.length = z[2]
-            self.width = z[3]
+            self.z[0] = detection.bbox.center.x
+            self.z[1] = detection.bbox.center.y
+            self.length = detection.bbox.size_x
+            self.width = detection.bbox.size_y
             self.R = np.matrix([[sigma_cam_i**2, 0], # measurement noise covariance matrix
                                 [0, sigma_cam_j**2]])
             
-
-            ############
-            # END student code
-            ############ 

@@ -17,23 +17,23 @@ import numpy as np
 import os
 import sys
 
-# from pyrsistent import T
-PACKAGE_PARENT = '..'
-SCRIPT_DIR = os.path.dirname(os.path.realpath(os.path.join(os.getcwd(), os.path.expanduser(__file__))))
-sys.path.append(os.path.normpath(os.path.join(SCRIPT_DIR, PACKAGE_PARENT)))
-
-import tracking_params as params 
+dir_tracking = os.path.dirname(os.path.realpath(__file__))
+dir_sf = os.path.dirname(dir_tracking)
+dir_scripts = os.path.dirname(dir_sf)
+sys.path.append(dir_scripts)
+sys.path.append(dir_sf)
 
 class Filter:
     '''Kalman filter class'''
-    def __init__(self):
+    def __init__(self, params):
+        self.params = params
         pass
 
     def F(self):
         ############
         # Step 1: implement and return system matrix F
         ############
-        dt = params.dt
+        dt = self.params.dt
         return np.matrix([[1,0,0,dt,0,0],
                          [0,1,0,0,dt,0],
                          [0,0,1,0,0,dt],
@@ -49,8 +49,8 @@ class Filter:
         ############
         # Step 1: implement and return process noise covariance Q
         ############
-        dt = params.dt
-        q = params.q
+        dt = self.params.dt
+        q = self.params.q
         q1 = dt * q
         q2 = (dt**2 * q) / 2
         q3 = (dt**3 * q) / 3
@@ -93,7 +93,7 @@ class Filter:
 
         H_t = H.transpose()
         K = P * H_t * np.linalg.inv(self.S(track, meas, H))
-        I = np.identity(params.dim_state)
+        I = np.identity(self.params.dim_state)
         track.set_x(x + K * self.gamma(track, meas)) # gamma is transformation of state estimation to measurement state
         track.set_P((I - K * H) * P)
 

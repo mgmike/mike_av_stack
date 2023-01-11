@@ -14,18 +14,21 @@
 import numpy as np
 import collections
 import rospy
-from vision_msgs.msg import BoundingBox3D, ObjectHypothesisWithPose, Detection3D
+from vision_msgs.msg import BoundingBox3D, ObjectHypothesisWithPose, Detection3DArray
+import json
+from easydict import EasyDict as edict
 
 # add project directory to python path to enable relative imports
 import os
 import sys
-PACKAGE_PARENT = '..'
-SCRIPT_DIR = os.path.dirname(os.path.realpath(os.path.join(os.getcwd(), os.path.expanduser(__file__))))
-sys.path.append(os.path.normpath(os.path.join(SCRIPT_DIR, PACKAGE_PARENT)))
+dir_tracking = os.path.dirname(os.path.realpath(__file__))
+dir_sf = os.path.dirname(dir_tracking)
+dir_scripts = os.path.dirname(dir_sf)
+sys.path.append(dir_scripts)
+sys.path.append(dir_sf)
 
 from tracking.filter import Filter
 from tracking.association import Association
-from tracking.trackmanagement import Trackmanagement
 from tracking.measurements import Sensor, Measurement
 
 class Track:
@@ -113,29 +116,38 @@ class Track:
 
 class Trackmanagement:
     '''Track manager with logic for initializing and deleting objects'''
-    def __init__(self, sensors, params):
+    def __init__(self, sensors):
         self.sensors = sensors
-        self.params = params
         self.N = 0 # current number of tracks
         self.track_list = []
         self.last_id = -1
         self.result_list = []
+
+        self.params = edict()
+        with open(os.path.join(dir_sf, 'configs', 'tracking.json')) as j_object:
+            self.params.update(json.load(j_object))
         
-        rospy.loginfo('Setting up listeners')
-        # rospy.Subscriber("/carla/ego_vehicle/camera/rgb/front/image_color", Image, sf.imgCallback)
-        rospy.Subscriber("/sensor_fusion/detection", Detection3D, self.detection_callback)
+        self.filter = Filter(self.params)
+        self.association = Association(self.params)
 
-        filter = Filter()
-        association = Association()
-        self.meas_list = []
+        for id, sensor in sensors.items():
+            rospy.Subscriber("/sensor_fusion/detection/" + id, Detection3DArray, self.detection_callback, (sensor))
 
-    def detection_callback(self, detections):
-        # predict
-        for detection in detections:
+    def detection_callback(self, detection3DArray, args):
+        sensor = args[0]
+        meas_list = []
+        for detection in detection3DArray.detections:
             time = detection.header.stamp
             frame_id = detection.header.frame_id
-            meas = Measurement(frame_id, )
-            self.meas_list.append(meas)
+
+            meas = Measurement(time, detection, sensor, self.params)
+            meas_list.append(meas)
+
+        # predict
+        for track in self.track_list:
+            self.filter.predict(track)
+
+        self.association.associate_and_update(self, meas_list, self.filter)
         
     def manage_tracks(self, unassigned_tracks, unassigned_meas, meas_list):  
         ############
