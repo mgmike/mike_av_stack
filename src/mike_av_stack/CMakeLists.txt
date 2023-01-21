@@ -8,25 +8,13 @@ project(mike_av_stack)
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
 ## is used, also find other catkin packages
 find_package(catkin REQUIRED COMPONENTS
-  rospy
-  numpy
-  carla_ros_bridge
-  carla_ego_vehicle
-  carla_manual_control
+  roscpp
   std_msgs
-  sensor_msgs
-  vision_msgs
-  tf
-  tf2
-  ros_numpy
-  cv2
-  torch
-  open3d
-  time
-  easydict
-  os
-  sys
+  pcl
+  Eigen
 )
+
+
 
 ## System dependencies are found with CMake's conventions
 # find_package(Boost REQUIRED COMPONENTS system)
@@ -120,7 +108,11 @@ find_package(catkin REQUIRED COMPONENTS
 catkin_package(
 #  INCLUDE_DIRS include
 #  LIBRARIES mike_av_stack
-#  CATKIN_DEPENDS carla_ego_vehicle rospy std_msgs
+ CATKIN_DEPENDS 
+ roscpp
+ std_msgs
+ pcl
+ Eigen
 #  DEPENDS system_lib
 )
 
@@ -143,27 +135,28 @@ include_directories(
 ## Add cmake target dependencies of the library
 ## as an example, code may need to be generated before libraries
 ## either from message generation or dynamic reconfigure
+## In other words, uncomment this and include another project in the src folder, or another catkinws
 # add_dependencies(${PROJECT_NAME} ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 
 ## Declare a C++ executable
 ## With catkin_make all packages are built within a single CMake context
 ## The recommended prefix ensures that target names across packages don't collide
-# add_executable(${PROJECT_NAME}_node src/mike_av_stack_node.cpp)
+add_executable(${PROJECT_NAME}_node scripts/localization/localization.cpp)
 
 ## Rename C++ executable without prefix
 ## The above recommended prefix causes long target names, the following renames the
 ## target back to the shorter version for ease of user use
 ## e.g. "rosrun someones_pkg node" instead of "rosrun someones_pkg someones_pkg_node"
-# set_target_properties(${PROJECT_NAME}_node PROPERTIES OUTPUT_NAME node PREFIX "")
+set_target_properties(${PROJECT_NAME}_node PROPERTIES OUTPUT_NAME localization PREFIX "")
 
 ## Add cmake target dependencies of the executable
 ## same as for the library above
 # add_dependencies(${PROJECT_NAME}_node ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 
 ## Specify libraries to link a library or executable target against
-# target_link_libraries(${PROJECT_NAME}_node
-#   ${catkin_LIBRARIES}
-# )
+target_link_libraries(${PROJECT_NAME}_node
+  ${catkin_LIBRARIES}
+)
 
 #############
 ## Install ##
@@ -175,7 +168,7 @@ include_directories(
 ## Mark executable scripts (Python etc.) for installation
 ## in contrast to setup.py, you can choose the destination
 catkin_install_python(PROGRAMS
-  scripts/sensor_fusion.py
+  scripts/sensor_fusion/sensor_fusion.py
   scripts/traffic_manager.py
   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )

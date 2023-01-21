@@ -6,13 +6,25 @@
 
 # Sensor fusion
 numpy
+os
+sys
+json
+easydict
+std_msgs
+sensor_msgs
+vision_msgs
+geometry_msgs
+rospy
+time
+ros_numpy
 opencv-python
 protobuf
-easydict
 torch
+cv2
 pillow
 matplotlib
 wxpython
 shapely
 tqdm
 open3d
+scipy

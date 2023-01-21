@@ -1,0 +1,6 @@
+<!-- Localization -->
+<launch>
+
+    <node name="localization" pkg="mike_av_stack" type="localization" output="screen" required="true"/>
+
+</launch>

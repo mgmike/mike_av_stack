@@ -89,6 +89,12 @@ Next steps, I want to:
 - Auto start carla and traffic gen
 - Fix my traffic gen
 
+## Problems to fix
+
+For localization, seperating the point clouds by each sensor makes no sense. So I would like to combine all sensor's point clouds to produce one global pointcloud. To do this, I would need to transform each sensor's point cloud by its extrinsic transformation matrix. 
+
+For sensor fusion, each measurement from the detection algorithm/model is in sensor space and needs to be transformed to vehicle space.
+
 
 ## Installation Issues
 
