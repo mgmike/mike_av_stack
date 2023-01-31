@@ -1,5 +1,12 @@
 #include "scan_matching.h"
 
+void Scan_Matching::set_map(PointCloudT::Ptr t){
+    target = t;
+} 
+
+void Scan_Matching::get_transform(const sensor_msgs::PointCloud2ConstPtr& cloud_msg){
+}
+
 double Score(vector<int> pairs, PointCloudT::Ptr target, PointCloudT::Ptr source, Eigen::Matrix4d transform){
 	double score = 0;
 	int index = 0;
@@ -16,3 +23,4 @@ double Score(vector<int> pairs, PointCloudT::Ptr target, PointCloudT::Ptr source
 	}
 	return score;
 }
+

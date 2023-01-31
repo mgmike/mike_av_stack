@@ -6,23 +6,29 @@
 
 #include <sensor_msgs/PointCloud2.h>
 
+#include <pcl_conversions/pcl_conversions.h>
 #include <pcl/io/pcd_io.h>
 #include <pcl/visualization/pcl_visualizer.h>
 #include <pcl/filters/voxel_grid.h>
 #include <pcl/registration/icp.h>
 #include <pcl/registration/ndt.h>
 #include <pcl/console/time.h>   // TicToc
+#include <pcl_conversions/pcl_conversions.h>
 
 
 #include "helper.h"
 #include "scan_matching.h"
+#include "ndt.h"
+#include "icp.h"
+#include "icps.h"
 
-PointCloudT pclCloud;
 
-void callback(const sensor_msgs::PointCloud2ConstPtr& cloud){
+void callback(const sensor_msgs::PointCloud2ConstPtr& cloud_msg){
+    // Create pcl point cloud
     pcl::PCLPointCloud2* cloud = new pcl::PCLPointCloud2;
     pcl::PCLPointCloud2ConstPtr cloudPtr(cloud);
     pcl::PCLPointCloud2 cloudfiltered;
+
 
 }
 
@@ -32,26 +38,20 @@ int main(int argc, char** argv){
     ros::NodeHandle nh("~");
     ROS_INFO("Hello world!");
 
-      	// I added the ability to change values through input params for rapid testing
-  	enum Registration{ Off, Ndt, Icp};
-  	Registration matching = Off;
+    Scan_Matching* scan_matching;
+
+    // I added the ability to change values through input params for rapid testing
 	string map_name = "map.pcd";
 	int iters = 10;
 	int dist = 2;
   	int cp_size = 5000;
   	double leafSize = 0.5;
 	bool need_to_write = true;
+    std::string topic("/carla/ego_vehicle/lidar/lidar1/point_cloud");
 
     std::string param;
     int param_int;
     // If the parameter 'map_name' exists and it is type string, then return true
-    if (nh.getParam("matching", param)){
-        if (strcmp(param, "ndt") == 0){
-            matching = Ndt;
-        } else if (strcmp(param, "icp") == 0){
-            matching = Icp;
-        }
-    }
     if (nh.getParam("iters", param_int)){
         iters = param_int;
     }
@@ -71,16 +71,21 @@ int main(int argc, char** argv){
   	cout << "Loaded " << mapCloud->points.size() << " data points from " << map_name << endl;
 	renderPointCloud(viewer, mapCloud, "map", Color(0,0,1));
 
-    // Set up local vehicle representation
-    auto vehicle = boost::static_pointer_cast<cc::Vehicle>(ego_actor);
+    // Get gps position
 	Pose pose(Point(0,0,0), Rotate(0,0,0));
 
+    // Assign the type of scan matching algorithm to scan_matching.
+    if (nh.getParam("matching", param)){
+        if (param == "ndt"){
+		    scan_matching = new NDT(mapCloud, pose, iters);
+        } else if (param == "icp"){
+		    scan_matching = new ICP(mapCloud, pose, iters);
+        } else if (param == "icps"){
+		    scan_matching = new ICPS(mapCloud, pose, iters, dist);
+        } else {return 0;}
+    }
 
-
-    typename pcl::PointCloud<PointT>::Ptr cloudFiltered (new pcl::PointCloud<PointT>);
-	typename pcl::PointCloud<PointT>::Ptr scanCloud (new pcl::PointCloud<PointT>);
-
-    ros::Subscriber sub = n.subscribe("/carla/ego_vehicle/lidar/lidar1/point_cloud", 100, callback);
+    ros::Subscriber sub = nh.subscribe(topic, 10, &Scan_Matching::get_transform, scan_matching);
 
     return 0;
 }

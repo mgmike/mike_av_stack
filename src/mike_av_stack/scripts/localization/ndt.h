@@ -1,15 +1,14 @@
 #include "scan_matching.h"
 #include <pcl/registration/ndt.h>
+#include <pcl_conversions/pcl_conversions.h>
 
 class NDT : public Scan_Matching
 {
-private:
-	PointCloudT::Ptr target;
+public:
 	Pose startingPose;
 	int iterations;
     pcl::NormalDistributionsTransform<pcl::PointXYZ, pcl::PointXYZ> ndt;
-public:
+
     NDT(PointCloudT::Ptr target, Pose startingPose, int iterations);
-	void set_map(PointCloudT::Ptr target);
-	Eigen::Matrix4d get_transform(const sensor_msgs::PointCloud2ConstPtr& source);
-}
+	void get_transform(const sensor_msgs::PointCloud2ConstPtr& cloud_msg);
+};

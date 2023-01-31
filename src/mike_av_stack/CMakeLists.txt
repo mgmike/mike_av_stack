@@ -1,19 +1,49 @@
 cmake_minimum_required(VERSION 3.0.2)
 project(mike_av_stack)
+set(CMAKE_CXX_STANDARD 14)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+# -g allows for gdb debugging
+# turn on -03 for best performance
+add_definitions(-std=c++14 -O3)
+# add_compile_definitions(CLI11_HAS_FILESYSTEM=0)
+
+set(CXX_FLAGS "-pthread -fPIC -DNDEBUG -Wextra")
+# set(CMAKE_CXX_FLAGS "${CXX_FLAGS} -Wl,-Bstatic -lboost_filesystem -Wl,-Bdynamic")
 
 ## Compile as C++11, supported in ROS Kinetic and newer
 # add_compile_options(-std=c++11)
 
+## Setting all dependancies to one variable
+set(${PROJECT_NAME}_DEPS
+  roscpp
+  std_msgs
+  sensor_msgs
+  pcl_ros
+  pcl_conversions
+)
+
 ## Find catkin macros and libraries
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
 ## is used, also find other catkin packages
-find_package(catkin REQUIRED COMPONENTS
-  roscpp
-  std_msgs
-  pcl
-  Eigen
+find_package(
+  catkin REQUIRED 
+  COMPONENTS ${${PROJECT_NAME}_DEPS}
 )
 
+find_package(Eigen3 REQUIRED eigen3)
+include_directories(${EIGEN3_INCLUDE_DIR})
+add_definitions(${EIGEN3_DEFINITIONS})
+
+if(NOT EIGEN3_FOUND)
+    # Fallback to cmake_modules
+    find_package(cmake_modules REQUIRED)
+    find_package(Eigen REQUIRED)
+    set(EIGEN3_INCLUDE_DIRS ${EIGEN_INCLUDE_DIRS})
+    set(EIGEN3_LIBRARIES ${EIGEN_LIBRARIES})  # Not strictly necessary as Eigen is head only
+    # Possibly map additional variables to the EIGEN3_ prefix.
+else()
+    set(EIGEN3_INCLUDE_DIRS ${EIGEN3_INCLUDE_DIR})
+endif()
 
 
 ## System dependencies are found with CMake's conventions
@@ -107,13 +137,9 @@ find_package(catkin REQUIRED COMPONENTS
 ## DEPENDS: system dependencies of this project that dependent projects also need
 catkin_package(
 #  INCLUDE_DIRS include
-#  LIBRARIES mike_av_stack
- CATKIN_DEPENDS 
- roscpp
- std_msgs
- pcl
- Eigen
-#  DEPENDS system_lib
+ LIBRARIES ${PROJECT_NAME}
+ CATKIN_DEPENDS ${${PROJECT_NAME}_DEPS}
+ DEPENDS Eigen
 )
 
 ###########
@@ -125,6 +151,7 @@ catkin_package(
 include_directories(
 # include
   ${catkin_INCLUDE_DIRS}
+  ${Eigen_INCLUDE_DIRS}
 )
 
 ## Declare a C++ library
@@ -141,7 +168,14 @@ include_directories(
 ## Declare a C++ executable
 ## With catkin_make all packages are built within a single CMake context
 ## The recommended prefix ensures that target names across packages don't collide
-add_executable(${PROJECT_NAME}_node scripts/localization/localization.cpp)
+add_executable(${PROJECT_NAME}_node 
+  scripts/localization/localization.cpp
+  scripts/localization/helper.cpp
+  scripts/localization/scan_matching.cpp
+  scripts/localization/ndt.cpp
+  scripts/localization/icp.cpp
+  scripts/localization/icps.cpp
+)
 
 ## Rename C++ executable without prefix
 ## The above recommended prefix causes long target names, the following renames the
@@ -154,9 +188,7 @@ set_target_properties(${PROJECT_NAME}_node PROPERTIES OUTPUT_NAME localization P
 # add_dependencies(${PROJECT_NAME}_node ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 
 ## Specify libraries to link a library or executable target against
-target_link_libraries(${PROJECT_NAME}_node
-  ${catkin_LIBRARIES}
-)
+target_link_libraries(${PROJECT_NAME}_node ${catkin_LIBRARIES} pcl_visualization)
 
 #############
 ## Install ##

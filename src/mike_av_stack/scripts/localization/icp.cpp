@@ -1,47 +1,25 @@
 #include "icp.h"
 
-ICP::ICP(PointCloudT::Ptr target&, Pose startingPose, int iterations){
-    this.target = target;
-    this.startingPost = startingPose;
-    this.iterations = iterations;
+ICP::ICP(PointCloudT::Ptr t, Pose sp, int iter): startingPose(sp), iterations(iter) {
+	target = t;
 
     transformation_matrix = Eigen::Matrix4d::Identity();
     initTransform = transform3D(startingPose.rotation.yaw, startingPose.rotation.pitch, startingPose.rotation.roll, startingPose.position.x, startingPose.position.y, startingPose.position.z);
 
 }
 
-// Make sure this is right
-void ICP::set_map(PointCloudT::Ptr t){
-    target = t;
-} 
+void ICP::get_transform(const sensor_msgs::PointCloud2ConstPtr& cloud_msg){
 
-vector<int> NN(pcl::KdTreeFLANN<PointT> kdtree, PointCloudT::Ptr source, double dist){
-	
-	vector<int> associations;
+	// Create pcl point cloud
+	pcl::PCLPointCloud2* cloud = new pcl::PCLPointCloud2;
+	pcl::PCLPointCloud2ConstPtr cloudPtr(cloud);
+	pcl::PCLPointCloud2 cloudfiltered;
 
-	// This function returns a vector of target indicies that correspond to each source index inorder.
-	// E.G. source index 0 -> target index 32, source index 1 -> target index 5, source index 2 -> target index 17, ... 
-
-	// Loop through each transformed source point and using the KDtree find the transformed source point's nearest target point. Append the nearest point to associaitons 
-	int i = 0;
-	for (PointT pt : source->points){
-
-		vector<int> pointIdxRadiusSearch;
-		vector<float> pointRadiusSquaredDistance;
-		if (kdtree.radiusSearch(pt, dist, pointIdxRadiusSearch, pointRadiusSquaredDistance) > 0){
-			associations.push_back(pointIdxRadiusSearch[0]);
-        } else {
-			associations.push_back(-1);
-        }
-		i++;
-    }
-  
-	return associations;
-}
-
-Eigen::Matrix4d ICP::get_transform(const sensor_msgs::PointCloud2ConstPtr& source){
+	// Convert to pcl
+	pcl_conversions::toPCL(*cloud_msg, *cloud);
+	PointCloudT::Ptr source(new PointCloudT);
+	pcl::fromPCLPointCloud2(*cloud, *source);
  
-
 	// 1. Transform the source to the startingPose
   	PointCloudT::Ptr transformSource(new PointCloudT);
   	pcl::transformPointCloud(*source, *transformSource, initTransform);
@@ -65,9 +43,10 @@ Eigen::Matrix4d ICP::get_transform(const sensor_msgs::PointCloud2ConstPtr& sourc
 		//std::cout << "\nICP has converged, score is " << icp.getFitnessScore() << std::endl;
 		transformation_matrix = icp.getFinalTransformation().cast<double>();
 		transformation_matrix = transformation_matrix * initTransform;
-		return transformation_matrix;
+		// return transformation_matrix;
     }
   	std::cout << "WARNING: ICP did not converge" << std::endl;
 
-	return transformation_matrix;
+	// Do something with this
+	// return transformation_matrix;
 }

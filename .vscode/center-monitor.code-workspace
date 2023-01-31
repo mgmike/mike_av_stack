@@ -1,8 +1,22 @@
 {
 	"folders": [
 		{
+			"name": "autonomous_sim",
 			"path": ".."
+		},
+		{
+			"name": "c3-project",
+			"path": "../../udacity_av/Localization/Project/home/c3-project"
+		},
+		{
+			"name": "Sensor_fusion_project",
+			"path": "../../udacity_av/Sensor_fusion_project"
+		},
+		{
+			"path": "../../../../../../opt/carla-ros-bridge/melodic"
 		}
 	],
-	"settings": {}
+	"settings": {
+		"ros.distro": "melodic"
+	}
 }
