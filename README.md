@@ -88,6 +88,7 @@ Next steps, I want to:
 - Implement image/camera detection
 - Auto start carla and traffic gen
 - Fix my traffic gen
+- Move point cloud combiner outside of sensor fusion
 
 ## Problems to fix
 

@@ -130,4 +130,13 @@ void renderBox(pcl::visualization::PCLVisualizer::Ptr& viewer, BoxQ box, int id,
     viewer->setShapeRenderingProperties(pcl::visualization::PCL_VISUALIZER_OPACITY, opacity*0.3, cubeFill);
 }
 
+void drawCar(pcl::visualization::PCLVisualizer::Ptr& viewer, Color color, Pose pose, int num, double alpha){
 
+	BoxQ box;
+	box.bboxTransform = Eigen::Vector3f(pose.position.x, pose.position.y, 0);
+    box.bboxQuaternion = getQuaternion(pose.rotation.yaw);
+    box.cube_length = 4;
+    box.cube_width = 2;
+    box.cube_height = 2;
+	renderBox(viewer, box, num, color, alpha);
+}

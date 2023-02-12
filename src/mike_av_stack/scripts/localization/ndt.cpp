@@ -1,11 +1,14 @@
 #include "ndt.h"
 
-NDT::NDT(PointCloudT::Ptr t, Pose sp, int iter): startingPose(sp), iterations(iter) {
-	target = t;
+NDT::NDT(PointCloudT::Ptr t, Pose sp, int iter): Scan_Matching(t), startingPose(sp), iterations(iter) {
     ndt.setTransformationEpsilon(0.0001);
     ndt.setInputTarget(target);
     ndt.setResolution(1);
     ndt.setStepSize(1);
+
+	// viewer = new pcl::visualization::PCLVisualizer("3D Viewer");
+  	// viewer->setBackgroundColor(0, 0, 0);
+	// renderPointCloud(viewer, target, "map", Color(0,0,1));
 }
 
 void NDT::get_transform(const sensor_msgs::PointCloud2ConstPtr& cloud_msg){

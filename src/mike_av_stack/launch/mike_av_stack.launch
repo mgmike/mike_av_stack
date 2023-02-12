@@ -9,7 +9,7 @@
   <arg name='role_name' default='ego_vehicle'/>
   <arg name="vehicle_filter" default='vehicle.audi.etron'/>
   <arg name="sensor_definition_file" default="$(find mike_av_stack)/scripts/sensor_fusion/configs/sensors.json"/>
-  <arg name="spawn_point" default=""/>
+  <arg name="spawn_point" default="65.516594,7.808423,0.275307,0.0,0.0,0.0"/>
   <!-- use comma separated format "x,y,z,roll,pitch,yaw" -->
 
   <!-- Map to load on startup (either a predefined CARLA town (e.g. 'Town01'), or a OpenDRIVE map file) -->
@@ -46,6 +46,10 @@
   <include file="$(find carla_manual_control)/launch/carla_manual_control.launch">
     <arg name='role_name' value='$(arg role_name)'/>
   </include>
+
+  <!-- <node pkg="carla_spawn_objects" type="carla_spawn_objects" name="carla_spawn_objects">
+    <arg name="spawn_point"
+  </node> -->
 
   <!-- My Sensor fusion node. -->
   <!-- <include file="$(find mike_av_stack)/launch/sensor_fusion.launch"/> -->

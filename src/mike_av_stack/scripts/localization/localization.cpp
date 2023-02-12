@@ -24,11 +24,11 @@
 
 
 void callback(const sensor_msgs::PointCloud2ConstPtr& cloud_msg){
+    ROS_INFO("In Callback");
     // Create pcl point cloud
     pcl::PCLPointCloud2* cloud = new pcl::PCLPointCloud2;
     pcl::PCLPointCloud2ConstPtr cloudPtr(cloud);
     pcl::PCLPointCloud2 cloudfiltered;
-
 
 }
 
@@ -42,6 +42,7 @@ int main(int argc, char** argv){
 
     // I added the ability to change values through input params for rapid testing
 	string map_name = "map.pcd";
+    string map_directory = "/media/mike/Storage/Documents/autonomous_sim/src/mike_av_stack/scripts/localization/maps/";
 	int iters = 10;
 	int dist = 2;
   	int cp_size = 5000;
@@ -57,25 +58,27 @@ int main(int argc, char** argv){
     }
     if (nh.getParam("map_name", param)){
         map_name = param;
+    }    
+    if (nh.getParam("topic", param)){
+        topic = param;
     }
 
-    ros::spin();
-
     // Initialize visualization
-    pcl::visualization::PCLVisualizer::Ptr viewer (new pcl::visualization::PCLVisualizer ("3D Viewer"));
-  	viewer->setBackgroundColor (0, 0, 0);
+    // pcl::visualization::PCLVisualizer::Ptr viewer;
+    // viewer.reset(new pcl::visualization::PCLVisualizer ("3D Viewer"));
+  	// viewer->setBackgroundColor (0, 0, 0);
 
     // Load map
 	PointCloudT::Ptr mapCloud(new PointCloudT);
-  	pcl::io::loadPCDFile(map_name, *mapCloud);
-  	cout << "Loaded " << mapCloud->points.size() << " data points from " << map_name << endl;
-	renderPointCloud(viewer, mapCloud, "map", Color(0,0,1));
+  	pcl::io::loadPCDFile(map_directory + map_name, *mapCloud);
+  	ROS_INFO_STREAM("Loaded " << mapCloud->points.size() << " data points from " << map_name);
+	// renderPointCloud(viewer, mapCloud, "map", Color(0,0,1));
 
     // Get gps position
-	Pose pose(Point(0,0,0), Rotate(0,0,0));
+	Pose pose(Point(65.516594,7.808423,0.275307), Rotate(0.855823,0.0,0.0));
 
     // Assign the type of scan matching algorithm to scan_matching.
-    if (nh.getParam("matching", param)){
+    if (nh.getParam("scan_matching_algorithm", param)){
         if (param == "ndt"){
 		    scan_matching = new NDT(mapCloud, pose, iters);
         } else if (param == "icp"){
@@ -83,9 +86,20 @@ int main(int argc, char** argv){
         } else if (param == "icps"){
 		    scan_matching = new ICPS(mapCloud, pose, iters, dist);
         } else {return 0;}
+        //Move inside later
+        ROS_INFO("Setting up subscriber");
+    }
+    // ros::Subscriber sub = nh.subscribe(topic, 10, callback);
+    ros::Subscriber sub = nh.subscribe(topic, 10, &Scan_Matching::get_transform, scan_matching);
+
+    bool viz;
+    if (nh.getParam("viz", viz)){
+        if (viz){
+            scan_matching->enable_viz();
+        }
     }
 
-    ros::Subscriber sub = nh.subscribe(topic, 10, &Scan_Matching::get_transform, scan_matching);
+    ros::spin();
 
     return 0;
 }

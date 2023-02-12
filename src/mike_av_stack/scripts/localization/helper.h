@@ -120,6 +120,7 @@ void renderRay(pcl::visualization::PCLVisualizer::Ptr& viewer, Point p1, Point p
 void renderPath(pcl::visualization::PCLVisualizer::Ptr& viewer, const PointCloudT::Ptr& cloud, std::string name, Color color);
 Eigen::Quaternionf getQuaternion(float theta);
 void renderBox(pcl::visualization::PCLVisualizer::Ptr& viewer, BoxQ box, int id, Color color, float opacity);
+void drawCar(pcl::visualization::PCLVisualizer::Ptr& viewer, Color color, Pose pose, int num, double alpha);
 
 struct LineSegment{
 	// slope of y component

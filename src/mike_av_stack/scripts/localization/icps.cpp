@@ -1,11 +1,13 @@
 #include "icps.h"
 
-ICPS::ICPS(PointCloudT::Ptr t, Pose sp, int iter, int dist = 2): startingPose(sp), iterations(iter), dist(dist) {
-  target = t;
-
-    // Create a KDtree once with target as input
+ICPS::ICPS(PointCloudT::Ptr t, Pose sp, int iter, int dist = 2): Scan_Matching(t), startingPose(sp), iterations(iter), dist(dist) {
+  // Create a KDtree once with target as input
   kdtree.setInputCloud(target);
 
+  // Assign visualization
+	// viewer = new pcl::visualization::PCLVisualizer("3D Viewer");
+  // viewer->setBackgroundColor(0, 0, 0);
+	// renderPointCloud(viewer, target, "map", Color(0,0,1));
 }
 
 vector<int> NN(pcl::KdTreeFLANN<PointT> kdtree, PointCloudT::Ptr source, double dist){
