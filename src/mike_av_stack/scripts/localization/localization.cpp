@@ -48,7 +48,8 @@ int main(int argc, char** argv){
   	int cp_size = 5000;
   	double leafSize = 0.5;
 	bool need_to_write = true;
-    std::string topic("/carla/ego_vehicle/lidar/lidar1/point_cloud");
+    // std::string topic("/carla/ego_vehicle/lidar/lidar1/point_cloud");
+    std::string topic("/carla/ego_vehicle/lidar/lidar1/point_cloud_full");
 
     std::string param;
     int param_int;

@@ -1,5 +1,8 @@
 <!-- -->
 <launch>
+  <!-- Visualiztion -->
+  <arg name="viz" default="true"/>
+
   <!-- CARLA connection -->
   <arg name='host' default='localhost'/>
   <arg name='port' default='2000'/>
@@ -19,6 +22,12 @@
   <arg name='synchronous_mode' default=''/>
   <arg name='synchronous_mode_wait_for_vehicle_control_command' default=''/>
   <arg name='fixed_delta_seconds' default='0.008333333'/>
+
+  <!-- Localization settings -->
+  <arg name="map_name" default="map.pcd"/>
+  <!-- Options: icp, ndt, icps -->
+  <arg name="scan_matching_algorithm" default="icp"/>
+  <arg name="iters" default="100"/>
 
 
   <include file="$(find carla_ros_bridge)/launch/carla_ros_bridge.launch">
@@ -51,10 +60,21 @@
     <arg name="spawn_point"
   </node> -->
 
-  <!-- My Sensor fusion node. -->
-  <!-- <include file="$(find mike_av_stack)/launch/sensor_fusion.launch"/> -->
-
+  <!-- My point cloud stacker -->
+  <!-- <node pkg="$(find mike_av_stack)" type="point_cloud_stacker" name="point_cloud_stacker.py" /> -->
+  <include file="$(find mike_av_stack)/launch/tools.launch"/>
   <!-- <include file="$(find mike_av_stack)/launch/traffic_manager.launch"/> -->
 
+  <!-- My Sensor fusion node -->
+  <!-- <include file="$(find mike_av_stack)/launch/sensor_fusion.launch"/> -->
+
+  <!-- Localization node -->
+  <include file="$(find mike_av_stack)/launch/localization.launch">
+      <arg name="map_name" value='$(arg map_name)'/>
+      <!-- Options: icp, ndt, icps -->
+      <arg name="scan_matching_algorithm" value='$(arg scan_matching_algorithm)'/>
+      <arg name="viz" value='$(arg viz)'/>
+      <arg name="iters" value='$(arg iters)'/>
+  </include>
 
 </launch>

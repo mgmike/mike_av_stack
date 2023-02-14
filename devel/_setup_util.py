@@ -268,7 +268,7 @@ if __name__ == '__main__':
 
         if not args.local:
             # environment at generation time
-            CMAKE_PREFIX_PATH = r'/opt/carla-ros-bridge/melodic:/opt/ros/melodic'.split(';')
+            CMAKE_PREFIX_PATH = r'/home/mike/documents/autonomous_sim/devel;/media/mike/Storage/Documents/autonomous_sim/devel;/opt/carla-ros-bridge/melodic;/opt/ros/melodic'.split(';')
         else:
             # don't consider any other prefix path than this one
             CMAKE_PREFIX_PATH = []
