@@ -73,6 +73,12 @@ int main(int argc, char** argv){
 	PointCloudT::Ptr mapCloud(new PointCloudT);
   	pcl::io::loadPCDFile(map_directory + map_name, *mapCloud);
   	ROS_INFO_STREAM("Loaded " << mapCloud->points.size() << " data points from " << map_name);
+	// Flip the points. For some reason, they are flipped
+	PointCloudT::Ptr flipped(new PointCloudT);
+	for (auto point : mapCloud->points){
+		flipped->points.push_back(PointT(point.x, -1.0 * point.y, point.z));
+	}
+	mapCloud = flipped;
 	// renderPointCloud(viewer, mapCloud, "map", Color(0,0,1));
 
     // Get gps position
@@ -83,7 +89,7 @@ int main(int argc, char** argv){
         if (param == "ndt"){
 		    scan_matching = new NDT(mapCloud, pose, iters);
         } else if (param == "icp"){
-		    scan_matching = new ICP(mapCloud, pose, iters);
+		    scan_matching = new ICP(mapCloud, pose, iters, nh);
         } else if (param == "icps"){
 		    scan_matching = new ICPS(mapCloud, pose, iters, dist);
         } else {return 0;}

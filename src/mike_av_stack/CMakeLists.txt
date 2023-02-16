@@ -20,6 +20,7 @@ set(${PROJECT_NAME}_DEPS
   sensor_msgs
   pcl_ros
   pcl_conversions
+  tf2_geometry_msgs
 )
 
 ## Find catkin macros and libraries

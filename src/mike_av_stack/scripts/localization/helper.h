@@ -3,6 +3,8 @@
 #include <math.h>
 #include <vector>
 #include <Eigen/Geometry>
+#include <tf2_geometry_msgs/tf2_geometry_msgs.h>
+#include <tf2/LinearMath/Quaternion.h>
 
 #ifndef HELPER_H
 #define HELPER_H
@@ -119,6 +121,9 @@ void renderPointCloud(pcl::visualization::PCLVisualizer::Ptr& viewer, const pcl:
 void renderRay(pcl::visualization::PCLVisualizer::Ptr& viewer, Point p1, Point p2, std::string name, Color color);
 void renderPath(pcl::visualization::PCLVisualizer::Ptr& viewer, const PointCloudT::Ptr& cloud, std::string name, Color color);
 Eigen::Quaternionf getQuaternion(float theta);
+Eigen::Quaternionf getQuaternion(Rotate rotation);
+void getQuaternion(Rotate rotation, tf2::Quaternion &q);
+void getEuiler(tf2::Quaternion qtf, Rotate &rotation);
 void renderBox(pcl::visualization::PCLVisualizer::Ptr& viewer, BoxQ box, int id, Color color, float opacity);
 void drawCar(pcl::visualization::PCLVisualizer::Ptr& viewer, Color color, Pose pose, int num, double alpha);
 

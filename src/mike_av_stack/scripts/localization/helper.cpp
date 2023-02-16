@@ -111,6 +111,24 @@ Eigen::Quaternionf getQuaternion(float theta)
 	return q;
 }
 
+Eigen::Quaternionf getQuaternion(Rotate rotation){
+	Eigen::Quaternionf q;
+	q = Eigen::AngleAxisf(rotation.roll, Eigen::Vector3f::UnitX())
+		* Eigen::AngleAxisf(rotation.pitch, Eigen::Vector3f::UnitY())
+		* Eigen::AngleAxisf(rotation.yaw, Eigen::Vector3f::UnitZ());
+	return q;
+}
+
+void getQuaternion(Rotate rotation, tf2::Quaternion &q){
+	q.setRPY(rotation.roll, rotation.pitch, rotation.yaw);
+	q.normalize();
+}
+
+void getEuiler(tf2::Quaternion qtf, Rotate &rotation){
+	tf2::Matrix3x3 m(qtf);
+	m.getRPY(rotation.roll, rotation.pitch, rotation.yaw);
+}
+
 void renderBox(pcl::visualization::PCLVisualizer::Ptr& viewer, BoxQ box, int id, Color color, float opacity)
 {
     if(opacity > 1.0)

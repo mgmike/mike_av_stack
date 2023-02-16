@@ -1,8 +1,36 @@
 #include "icp.h"
 
-ICP::ICP(PointCloudT::Ptr t, Pose sp, int iter): Scan_Matching(t), startingPose(sp), iterations(iter) {
+ICP::ICP(PointCloudT::Ptr t, Pose sp, int iter, ros::NodeHandle n): Scan_Matching(t), pose(sp), iterations(iter) {
 	ROS_INFO("In ICP!");
-    initTransform = transform3D(startingPose.rotation.yaw, startingPose.rotation.pitch, startingPose.rotation.roll, startingPose.position.x, startingPose.position.y, startingPose.position.z);
+	nh = n;
+    initTransform = transform3D(pose.rotation.yaw, pose.rotation.pitch, pose.rotation.roll, pose.position.x, pose.position.y, pose.position.z);
+
+    gnss_sub = nh.subscribe("/carla/ego_vehicle/gnss/gnss1/fix", 10, &ICP::gnss_update, this);
+    imu_sub = nh.subscribe("/carla/ego_vehicle/imu/imu1", 10, &ICP::imu_update, this);
+	
+}
+
+void ICP::gnss_update(const sensor_msgs::NavSatFixConstPtr& gnss){
+	ROS_INFO("Got gnss!");
+	if (!gnss_rdy) gnss_rdy = true;
+	ps_mutex.lock();
+	pose.position.x = gnss->longitude;
+	pose.position.y = gnss->latitude;
+	pose.position.z = gnss->altitude;
+	ps_mutex.unlock();
+}
+
+void ICP::imu_update(const sensor_msgs::ImuConstPtr& imu){
+	// imu->orientation is a geometry_msgs/Quaternion, and must be converted to euiler for pose 
+	ROS_INFO("Got imu!");
+	if (!imu_rdy) imu_rdy = true;
+	Rotate r;
+	tf2::Quaternion qtf;
+	tf2::fromMsg(imu->orientation, qtf);
+	getEuiler(qtf, r);
+	rt_mutex.lock();
+	pose.rotation = r;
+	rt_mutex.unlock();
 }
 
 void ICP::get_transform(const sensor_msgs::PointCloud2ConstPtr& cloud_msg){
@@ -26,8 +54,15 @@ void ICP::get_transform(const sensor_msgs::PointCloud2ConstPtr& cloud_msg){
 	vg.setLeafSize(leafSize, leafSize, leafSize);
 	vg.filter(*filteredSource);
  
-	// 1. Transform the source to the startingPose
-  	PointCloudT::Ptr transformSource(new PointCloudT);
+	// 1. Transform the source to the pose
+	it_mutex.lock();
+	ps_mutex.lock();
+	rt_mutex.lock();
+	initTransform = transform3D(pose.rotation.yaw, pose.rotation.pitch, pose.rotation.roll, pose.position.x, pose.position.y, pose.position.z);
+	rt_mutex.unlock();
+	ps_mutex.unlock();
+	it_mutex.unlock();
+	PointCloudT::Ptr transformSource(new PointCloudT);
   	pcl::transformPointCloud(*filteredSource, *transformSource, initTransform);
   
 	//2. Create the PCL icp object
@@ -47,11 +82,15 @@ void ICP::get_transform(const sensor_msgs::PointCloud2ConstPtr& cloud_msg){
   
   	if(icp.hasConverged()){
 		//std::cout << "\nICP has converged, score is " << icp.getFitnessScore() << std::endl;
+		tm_mutex.lock();
 		transformation_matrix = icp.getFinalTransformation().cast<double>();
 		transformation_matrix = transformation_matrix * initTransform;
+		tm_mutex.unlock();
 		// return transformation_matrix;
     }
   	ROS_INFO("WARNING: ICP did not converge");
+	// Do something with this
+	
 
 	if (viz){
 		// Transform scan so it aligns with ego's actual pose and render that scan
@@ -67,8 +106,4 @@ void ICP::get_transform(const sensor_msgs::PointCloud2ConstPtr& cloud_msg){
 
 		viewer->spinOnce();
 	}
-
-
-	// Do something with this
-	// return transformation_matrix;
 }

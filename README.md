@@ -25,11 +25,16 @@ to enable python3 in ros melodic
 
 You also will need simple-pid for manual control.
 
-`pip install --user simple-pid`
+  ```bash
+  pip install --user simple-pid
+  ```
 
 Initially, the installed directory is not in the path, so I needed to add it to the path.
 
-`export PATH=$PATH:/home/mike/.local/lib/python3.7/site-packages`
+
+  ```bash
+  export PATH=$PATH:/home/mike/.local/lib/python3.7/site-packages
+  ```
 
 I have an anaconda enviornment called waymo with all of the libraries needed for the sensor fusion part of the udacity course. 
 
@@ -38,29 +43,49 @@ I have an anaconda enviornment called waymo with all of the libraries needed for
 
 Source the carla ros bridge enviornment
 
-`source /opt/carla-ros-bridge/melodic/setup.bash`
+
+  ```bash
+  source /opt/carla-ros-bridge/melodic/setup.bash
+  ```
+  
 
 Then make the catkin workspace
 
-`catkin_make`
+  ```bash
+  catkin_make
+  ```
 
 Then create the package
 
-`cd ~/<this project directory>/src`
-`catkin_create_pkg mike_av_stack std_msgs rospy`
+  ```bash
+  cd ~/<this project directory>/src
+  catkin_create_pkg mike_av_stack std_msgs rospy
+  ```
+  
 
 # How to Run
 
 Source the current workspace:
 
-`source devel/setup.bash`
+  ```bash
+  source devel/setup.bash
+  ```
 
 Then the current workspace will be a child of the parent carla_ros_bridge catkin workspace.
 
+Start carla
+
+  ```bash
+  cd /opt/carla-simulator
+  ./CarlaUE4.sh
+  ```
+  
 
 By default, running the project mike_av_stack 
 
-`roslaunch mike_av_stack mike_av_stack.launch`
+  ```bash
+  roslaunch mike_av_stack mike_av_stack.launch
+  ```
 
 will do the following:
 
@@ -81,14 +106,27 @@ And publishes topics:
 # Todo
 
 Next steps, I want to:
-- Edit/understand the sensor config files and make my own
-- Make sure the ego vehicle does not change every time I run the code
+- Clean up config files
 - Move the rviz config file locally and clean it up a bit
-- Implement detection tracking
-- Implement image/camera detection
-- Auto start carla and traffic gen
-- Fix my traffic gen
-- Move point cloud combiner outside of sensor fusion
+
+- Sensor Fusion
+  1. Fix tracking
+  1. Train a cnn on my parameters 
+  1. Fix intensity scaling
+  1. Add image detection
+
+- Localization
+  1. Move subscriber initialization into the scan matching constructor
+  1. Implement configs
+  1. Finish scan matching, and add thread safe transformation matrix
+  1. Add gnss
+  1. Add covariances
+  1. Maybe use EKF to compare gnss and scan matching?
+  1. Far off: Train a CNN to detect features like trees, buildings signs and such and create a feature map from that
+
+- Tools
+  1. Fix traffic gen
+
 
 ## Problems to fix
 
@@ -114,9 +152,11 @@ Okay I just restarted from scratch and got another error while building carla fr
 Got [this error](https://github.com/carla-simulator/carla/issues/5886)
 and fixed it [this way](https://stackoverflow.com/questions/40790943/usr-bin-ld-cannot-find-lstdc-for-ubuntu-while-trying-to-swift-build-perfe)
 
-`sudo ln -s /usr/lib/x86_64-linux-gnu/libstdc++.so.6 /usr/lib/libstdc++.so`
+  ```bash
+  sudo ln -s /usr/lib/x86_64-linux-gnu/libstdc++.so.6 /usr/lib/libstdc++.so
 
-`sudo ln -s /usr/lib/x86_64-linux-gnu/libstdc++.so.6 /usr/lib/libstdc++.so.6`
+  sudo ln -s /usr/lib/x86_64-linux-gnu/libstdc++.so.6 /usr/lib/libstdc++.so.6
+  ```
 
 On master new error:
 CMake Error at cmake/modules/CheckCompilerVersion.cmake:72 (message):
