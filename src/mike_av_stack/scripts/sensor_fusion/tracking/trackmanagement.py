@@ -12,9 +12,9 @@
 
 # imports
 import numpy as np
+import threading
 import collections
 import rospy
-from vision_msgs.msg import BoundingBox3D, ObjectHypothesisWithPose, Detection3DArray
 import json
 from easydict import EasyDict as edict
 
@@ -29,7 +29,7 @@ sys.path.append(dir_sf)
 
 from tracking.filter import Filter
 from tracking.association import Association
-from tracking.measurements import Sensor, Measurement
+from tools.ros_conversions.transformations import euler_from_quaternion
 
 class Track:
     '''Track class with state, covariance, id, score'''
@@ -116,12 +116,11 @@ class Track:
 
 class Trackmanagement:
     '''Track manager with logic for initializing and deleting objects'''
-    def __init__(self, sensors):
-        self.sensors = sensors
+    def __init__(self):
         self.N = 0 # current number of tracks
-        self.track_list = []
         self.last_id = -1
-        self.result_list = []
+        self.track_list = []
+        self.track_list_lock = threading.Lock()
 
         self.params = edict()
         with open(os.path.join(dir_sf, 'configs', 'tracking.json')) as j_object:
@@ -129,25 +128,6 @@ class Trackmanagement:
         
         self.filter = Filter(self.params)
         self.association = Association(self.params)
-
-        for id, sensor in sensors.items():
-            rospy.Subscriber("/sensor_fusion/detection/" + id, Detection3DArray, self.detection_callback, (sensor))
-
-    def detection_callback(self, detection3DArray, args):
-        sensor = args[0]
-        meas_list = []
-        for detection in detection3DArray.detections:
-            time = detection.header.stamp
-            frame_id = detection.header.frame_id
-
-            meas = Measurement(time, detection, sensor, self.params)
-            meas_list.append(meas)
-
-        # predict
-        for track in self.track_list:
-            self.filter.predict(track)
-
-        self.association.associate_and_update(self, meas_list, self.filter)
         
     def manage_tracks(self, unassigned_tracks, unassigned_meas, meas_list):  
         ############
@@ -161,7 +141,9 @@ class Trackmanagement:
         
         # decrease score for unassigned tracks
         for i in unassigned_tracks:
+            self.track_list_lock.acquire()
             u = self.track_list[i]
+            self.track_list_lock.release()
             if meas_list:
                 if meas_list[0].sensor.in_fov(u.x):
                     u.score -= 1.0 / self.params.window
@@ -171,11 +153,14 @@ class Trackmanagement:
                 u.score = 0.0
 
         # delete old tracks   
+        self.track_list_lock.acquire()
         for track in self.track_list:
             if ((track.state in ['confirmed'] and track.score < self.params.delete_threshold) or
                     ((track.P[0, 0] > self.params.max_P or track.P[1, 1] > self.params.max_P)) or
                     track.score < 0.05):
-                self.delete_track(track)
+                print('deleting track no.', track.id)
+                self.track_list.remove(track)
+        self.track_list_lock.release()
 
         ############
         # END student code
@@ -187,7 +172,9 @@ class Trackmanagement:
                 self.init_track(meas_list[j])
             
     def addTrackToList(self, track):
+        self.track_list_lock.acquire()
         self.track_list.append(track)
+        self.track_list_lock.release()
         self.N += 1
         self.last_id = track.id
 
@@ -196,8 +183,16 @@ class Trackmanagement:
         self.addTrackToList(track)
 
     def delete_track(self, track):
-        print('deleting track no.', track.id)
-        self.track_list.remove(track)
+        if track is Track:
+            print('deleting track no.', track.id)
+            self.track_list_lock.acquire()
+            self.track_list.remove(track)
+            self.track_list_lock.release()
+        if track is int:
+            print('deleting track no.', track)
+            self.track_list_lock.acquire()
+            del self.track_list[track]
+            self.track_list_lock.release()
         
     def handle_updated_track(self, track):      
         ############
@@ -214,7 +209,46 @@ class Trackmanagement:
         else:
             track.state = 'tentative'
 
+
+class Measurement:
+    '''Measurement class including measurement values, covariance, timestamp, sensor'''
+    def __init__(self, num_frame,params):
+        # create measurement object
+        self.t = (num_frame - 1) * params.dt # time
+
+class LidarMeasurement(Measurement):
+    def __init__(self, num_frame, detection, params):
+        super().__init__(num_frame, params)
+
+        # create measurement object
+        sigma_lidar_x = params.sigma_lidar_x # load params
+        sigma_lidar_y = params.sigma_lidar_y
+        sigma_lidar_z = params.sigma_lidar_z
+        self.z = np.zeros((params.dim_meas,1)) # measurement vector
+        self.z[0] = detection.bbox.center.position.x
+        self.z[1] = detection.bbox.center.position.y
+        self.z[2] = detection.bbox.center.position.z
+        self.R = np.matrix([[sigma_lidar_x**2, 0, 0], # measurement noise covariance matrix
+                            [0, sigma_lidar_y**2, 0], 
+                            [0, 0, sigma_lidar_z**2]])
         
-        ############
-        # END student code
-        ############ 
+        self.width = detection.bbox.size.x
+        self.length = detection.bbox.size.y
+        self.height = detection.bbox.size.z
+        q = detection.bbox.center.orientation
+        q_array = [q.x, q.y, q.z, q.w]
+        self.yaw = euler_from_quaternion(q_array)
+
+class CameraMeasurement(Measurement):
+    def __init__(self, num_frame, detection, params):
+        super().__init__(num_frame, params)
+
+        sigma_cam_i = params.sigma_cam_i # load params
+        sigma_cam_j = params.sigma_cam_j
+        self.z = np.zeros((params.dim_meas, 1))
+        self.z[0] = detection.bbox.center.x
+        self.z[1] = detection.bbox.center.y
+        self.length = detection.bbox.size_x
+        self.width = detection.bbox.size_y
+        self.R = np.matrix([[sigma_cam_i**2, 0], # measurement noise covariance matrix
+                            [0, sigma_cam_j**2]])

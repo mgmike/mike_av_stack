@@ -1,3 +1,4 @@
+
 # ---------------------------------------------------------------------
 # Project "Track 3D-Objects Over Time"
 # Copyright (C) 2020, Dr. Antje Muntzinger / Dr. Andreas Haja.
@@ -17,12 +18,14 @@ import rospy
 
 from std_msgs.msg import Header
 from sensor_msgs.msg import Image, PointCloud2
-from vision_msgs.msg import BoundingBox3D, ObjectHypothesisWithPose, Detection3D, Detection3DArray
+from vision_msgs.msg import BoundingBox3D, ObjectHypothesisWithPose, Detection3D, Detection3DArray, Detection2D, Detection2DArray
 from geometry_msgs.msg import Pose, Point, Vector3, Quaternion
+# from tf.transformations import quaternion_from_euler, euler_from_quaternion
 import detection.objdet_pcl as pcl
 import detection.objdet_detect as odet
 import numpy as np
 import time
+from tracking.trackmanagement import Measurement, LidarMeasurement, CameraMeasurement
 
 import os
 import sys
@@ -30,23 +33,25 @@ dir_tracking = os.path.dirname(os.path.realpath(__file__))
 dir_sf = os.path.dirname(dir_tracking)
 dir_scripts = os.path.dirname(dir_sf)
 sys.path.append(dir_scripts)
-import tools.ros_conversions.transformations as transformations
+from tools.ros_conversions.transformations import quaternion_from_euler
 import ros_numpy
 
 
 class Sensor:
     '''Sensor class including measurement matrix'''
-    def __init__(self, name, configs, configs_track_management = None):
+    def __init__(self, name, configs, trackmanager):
         self.verbose = True
         self.configs = configs
         self.name = name
+        self.trackmanager = trackmanager
 
         self.frame_id = 0
 
-        self.pub_detection = rospy.Publisher('/sensor_fusion/detection/' + self.configs.id, Detection3DArray, queue_size=10)
-
-    def callback(self):
+    def detection_callback(self):
         """ Override this for subscriber """
+
+    def track_manage_callback(self):
+        """ Override this for trackmanagement. Update Track list from Trackmanagement"""
     
     def in_fov(self, x):
         """ check if an object x can be seen by this sensor """
@@ -60,30 +65,31 @@ class Sensor:
         """ calculate Jacobian H at current x from h(x) """
 
 class Lidar(Sensor):
-    def __init__(self, name, configs, configs_track_management=None):
-        super().__init__(name, configs, configs_track_management)
+    def __init__(self, name, configs, trackmanager):
+        super().__init__(name, configs, trackmanager)
 
         self.configs.update(odet.load_configs())
         self.model = odet.create_model(self.configs)
+        self.configs.fov = [-np.pi/2, np.pi/2] # angle of field of view in radians
+        self.configs.dim_meas = 3
 
         # Set up transforms
         self.sens_to_veh = np.matrix(np.identity((4))) # transformation sensor to vehicle coordinates equals identity matrix because lidar detections are already in vehicle coordinates
         print(type(self.sens_to_veh))
         self.veh_to_sens = np.linalg.inv(self.sens_to_veh) # transformation vehicle to sensor coordinates
 
+        self.pub_detection = rospy.Publisher("/sensor_fusion/detection/lidar/" + self.name, Detection3DArray, queue_size=10)
+
         # Set up ros subscriber
-        # rospy.Subscriber(self.configs.base_topic, PointCloud2, self.callback)
-        rospy.Subscriber("/carla/ego_vehicle/lidar/lidar1/point_cloud_full", PointCloud2, self.callback)
-        self.fov = [-np.pi/2, np.pi/2] # angle of field of view in radians
-        self.dim_meas = 3
+        rospy.Subscriber("/carla/ego_vehicle/lidar/lidar1/point_cloud_full", PointCloud2, self.detection_callback)
+        rospy.Subscriber("/sensor_fusion/detection/lidar/" + self.name, Detection3DArray, self.track_manage_callback)
         
-    def callback(self, point_cloud):
+    def detection_callback(self, point_cloud):
         if self.verbose:
             rospy.loginfo('Got pointcloud')
 
         point_cloud_2d = self.get_point_cloud_2d(point_cloud)
 
-        rospy.loginfo('Getting detection of full pcl')
         bev = pcl.bev_from_pcl(point_cloud_2d, self.configs)
         detections = odet.detect_objects(bev, self.model, self.configs)
 
@@ -93,8 +99,8 @@ class Lidar(Sensor):
         dets = []
         for det in detections:
             d3d = Detection3D()
-            q = transformations.euler_to_quaternion(0, 0, det[7])
-            ori = Quaternion(q[0], q[1], q[2], q[3])
+                            # Unpack the list 
+            ori = Quaternion(*(quaternion_from_euler(0, 0, det[7])))
             d3d.bbox.center.orientation = ori
             d3d.bbox.center.position.x = det[1]
             d3d.bbox.center.position.y = det[2]
@@ -145,13 +151,31 @@ class Lidar(Sensor):
 
         return point_cloud_2d
 
+
+    def track_manage_callback(self, detection3DArray):
+        if self.verbose:
+            rospy.loginfo('Got lidar detection')
+
+        meas_list = []
+        for detection in detection3DArray.detections:
+            time = detection.header.stamp
+            frame_id = detection.header.frame_id
+            meas = LidarMeasurement(time, detection, self.trackmanager.params)
+            meas_list.append(meas)
+
+        # predict
+        for track in self.trackmanager.track_list:
+            self.trackmanager.filter.predict(track)
+
+        self.trackmanager.association.associate_and_update(self.trackmanager, meas_list, self.trackmanager.filter)
+
     def in_fov(self, x):
         x_s = x[0:4]
         x_s[3] = 1
         x_v = self.veh_to_sens * x_s
         if x_v[0] != 0:
             alpha = np.arctan(x_v[1] / x_v[0])
-            if alpha > self.fov[0] and alpha < self.fov[1]:
+            if alpha > self.configs.fov[0] and alpha < self.configs.fov[1]:
                 return True
 
         return False
@@ -164,7 +188,7 @@ class Lidar(Sensor):
 
 
     def get_H(self, x, params):
-        H = np.matrix(np.zeros((self.dim_meas, params.dim_state)))
+        H = np.matrix(np.zeros((self.configs.dim_meas, params.dim_state)))
         R = self.veh_to_sens[0:3, 0:3] # rotation
         T = self.veh_to_sens[0:3, 3] # translation
         H[0:3, 0:3] = R
@@ -172,12 +196,12 @@ class Lidar(Sensor):
     
 
 class Camera(Sensor):
-    def __init__(self, name, configs, configs_track_management=None):
-        super().__init__(name, configs, configs_track_management)
-        rospy.Subscriber(self.configs.base_topic, Image, self.callback)
-        self.fov = [-0.35, 0.35] # angle of field of view in radians, inaccurate boundary region was removed
+    def __init__(self, name, configs, trackmanager):
+        super().__init__(name, configs, trackmanager)
+        rospy.Subscriber(self.configs.base_topic, Image, self.detection_callback)
+        self.configs.fov = [-0.35, 0.35] # angle of field of view in radians, inaccurate boundary region was removed
 
-        self.dim_meas = 2
+        self.configs.dim_meas = 2
         if 'calib' not in self.configs :
             rospy.loginfo('No calibration settings in the sensors.json file. Consider adding them')
             return
@@ -192,10 +216,27 @@ class Camera(Sensor):
 
         self.veh_to_sens = np.linalg.inv(self.sens_to_veh) # transformation vehicle to sensor coordinates
 
+        self.pub_detection = rospy.Publisher("/sensor_fusion/detection/camera/" + self.configs.id, Detection2DArray, queue_size=10)
         
-    def callback(self, image):
+    def detection_callback(self, image):
         rospy.loginfo('Got an image')
-    
+
+
+    def track_manage_callback(self, detection2DArray):        
+        meas_list = []
+        for detection in detection2DArray.detections:
+            time = detection.header.stamp
+            frame_id = detection.header.frame_id
+            meas = LidarMeasurement(time, detection, self.configs)
+            meas_list.append(meas)
+
+        # predict
+        for track in self.trackmanager.track_list:
+            self.trackmanager.filter.predict(track)
+
+        self.trackmanager.association.associate_and_update(self.trackmanager, meas_list, self.trackmanager.filter)
+
+
     def get_hx(self, x):
         ############
         # Step 4: implement nonlinear camera measurement function h:
@@ -209,7 +250,7 @@ class Camera(Sensor):
         pos_veh[0:3] = x[0:3]
         pos_sens = self.veh_to_sens * pos_veh
 
-        hx = np.zeros((self.dim_meas,1))
+        hx = np.zeros((self.configs.dim_meas,1))
         px, py, pz, _ = pos_sens
 
         if px == 0:
@@ -221,7 +262,7 @@ class Camera(Sensor):
         return hx  
 
     def get_H(self, x, params):
-        H = np.matrix(np.zeros((self.dim_meas, params.dim_state)))
+        H = np.matrix(np.zeros((self.configs.dim_meas, params.dim_state)))
         R = self.veh_to_sens[0:3, 0:3] # rotation
         T = self.veh_to_sens[0:3, 3] # translation
         # check and print error message if dividing by zero
@@ -248,42 +289,3 @@ class Camera(Sensor):
                                     / ((R[0,0]*x[0] + R[0,1]*x[1] + R[0,2]*x[2] + T[0])**2))
         return H   
         
-class Measurement:
-    '''Measurement class including measurement values, covariance, timestamp, sensor'''
-    def __init__(self, num_frame, detection, sensor, params):
-        # create measurement object
-        self.t = (num_frame - 1) * params.dt # time
-        self.sensor = sensor # sensor that generated this measurement
-        
-        if sensor.name == 'lidar':
-            sigma_lidar_x = params.sigma_lidar_x # load params
-            sigma_lidar_y = params.sigma_lidar_y
-            sigma_lidar_z = params.sigma_lidar_z
-            self.z = np.zeros((sensor.dim_meas,1)) # measurement vector
-            self.z[0] = detection.bbox.center.position.x
-            self.z[1] = detection.bbox.center.position.y
-            self.z[2] = detection.bbox.center.position.z
-            self.R = np.matrix([[sigma_lidar_x**2, 0, 0], # measurement noise covariance matrix
-                                [0, sigma_lidar_y**2, 0], 
-                                [0, 0, sigma_lidar_z**2]])
-            
-            self.width = detection.bbox.size.x
-            self.length = detection.bbox.size.y
-            self.height = detection.bbox.size.z
-            self.yaw = transformations.quaternion_to_euiler(detection.bbox.center.orientation)
-        elif sensor.name == 'camera':
-            
-            ############
-            # Step 4: initialize camera measurement including z and R 
-            ############
-
-            sigma_cam_i = params.sigma_cam_i # load params
-            sigma_cam_j = params.sigma_cam_j
-            self.z = np.zeros((sensor.dim_meas, 1))
-            self.z[0] = detection.bbox.center.x
-            self.z[1] = detection.bbox.center.y
-            self.length = detection.bbox.size_x
-            self.width = detection.bbox.size_y
-            self.R = np.matrix([[sigma_cam_i**2, 0], # measurement noise covariance matrix
-                                [0, sigma_cam_j**2]])
-            

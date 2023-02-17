@@ -10,25 +10,15 @@ from vision_msgs.msg import Detection3DArray
 # from tracking.trackmanagement import Trackmanagement
 from tracking.measurements import Sensor, Lidar, Camera
 from tracking.trackmanagement import Trackmanagement
-
-
-class SensorFusion:
-    def __init__(self, sensors, verbose=False):
-        self.verbose = verbose
-        self.classes = ['']
-        self.frame_id = 0
-        self.sensors = sensors
-        rospy.init_node("sensor_fusion", anonymous=True)
-
     
 
-def get_sensor(sensor):
+def get_sensor(sensor, trackmanager):
     name = sensor.type.split('.')[1]
     name = sensor.type.split('.')[2] if 'other' in name else name
     if name == 'lidar':
-        return Lidar(name, sensor)
+        return Lidar(name, sensor, trackmanager)
     elif name == 'camera':
-        return Camera(name, sensor)
+        return Camera(name, sensor, trackmanager)
 
 def main():
     
@@ -42,11 +32,13 @@ def main():
 
     # print(sensors_j.sensors)
 
+    trackmanager = Trackmanagement()
+
+    rospy.init_node("sensor_fusion", anonymous=True)
+
     # Create list of Sensors
-    sensors = {sensor.id : get_sensor(sensor) for sensor in sensors_j.sensors}
+    sensors = {sensor.id : get_sensor(sensor, trackmanager) for sensor in sensors_j.sensors}
     
-    sf = SensorFusion(sensors)
-    tm = Trackmanagement(sensors)
 
 
     # spin() simply keeps python from exiting until this node is stopped
