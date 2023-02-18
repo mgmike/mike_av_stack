@@ -1,8 +1,8 @@
 # Autonomous car simulator
 
-This project is going to be a big one for me. I plan on implementing, piece by piece, the self driving stack based off Carla. I will first start with the lowest levels then add on higher levels of the stack. For instance, camera and lidar object detection will be first, and behavior and control will be last.
+This project is a big one. I have already adapted the sensor fusion and localization modules into the project and I plan on adding path planning, controls and behavior in. 
 
-I am going to use the Carla simulator bult on Unreal Engine to run simulations and ROS to send data across modules. I aim to make this portible and to have each module abstracted such that I can run my code indipendant of Carla and open the posibility of running the simulations on a completely seperate machine. This enables me to run a simulation on computer A, send data over ros to computer B which is running this code. In another hypothetical scenario, raspberry pi A collects camera and lidar data from real sensors attached to a vehcile and sends data via ros to computer B in the vehicle running this project.
+I am using the Carla simulator bult on Unreal Engine to run simulations, and using ROS to send data across modules. The aim to make the project portible and to have each module abstracted such that I can run each module independent of the others and independent of Carla. My plans for the future are two fold. First, I want to run a Carla simulation on computer A, and send ros topics over a local network to computer B which then runs the modules. With this framework in place, it will be easy to impliment in a real controlled environment. For instance, raspberry pi A collects camera and lidar data from real sensors attached to a vehcile then sends ros topics to computer B also in the vehicle running the modules.
 
 # Requirements
 
@@ -38,6 +38,8 @@ Initially, the installed directory is not in the path, so I needed to add it to 
 
 I have an anaconda enviornment called waymo with all of the libraries needed for the sensor fusion part of the udacity course. 
 
+You will need to compile tf2 for python3, so follow [these steps](https://answers.ros.org/question/326226/importerror-dynamic-module-does-not-define-module-export-function-pyinit__tf2/)
+
 
 # Installation
 
@@ -55,12 +57,14 @@ Then make the catkin workspace
   catkin_make
   ```
 
-Then create the package
+<!-- Then create the package
+    This actually might only be initialize so ill have to check
+    I will refine this process
 
   ```bash
   cd ~/<this project directory>/src
   catkin_create_pkg mike_av_stack std_msgs rospy
-  ```
+  ``` -->
   
 
 # How to Run
@@ -68,12 +72,13 @@ Then create the package
 Source the current workspace:
 
   ```bash
+  cd .../catkin_ws/
   source devel/setup.bash
   ```
 
 Then the current workspace will be a child of the parent carla_ros_bridge catkin workspace.
 
-Start carla
+Start carla on another terminal
 
   ```bash
   cd /opt/carla-simulator
@@ -91,13 +96,16 @@ will do the following:
 
 - Starts basic carla_ros_bridge with an ego vehicle. You can find more info about this in the [docs.](https://carla.readthedocs.io/en/0.9.9/ros_launchs/#carla_ego_vehiclelaunch)
 - Opens rviz
+- Runs helpful tools
+  - point cloud stacker
 - Runs the sensor_fusion node
+- Runs the localization node
 
-The sensor_fusion node subscribes to the topics:
-- Lidar: /carla/ego_vehicle/lidar/lidar1/point_cloud
+# Docs
 
-And publishes topics:
-- Detections: /sensor_fusion/detection
+[Sensor Fusion](src/mike_av_stack/wiki/sensor_fusion.md)
+
+[Localization](src/mike_av_stack/wiki/localization.md)
 
 
 <!-- I used [this ros question](https://answers.ros.org/question/373094/understanding-pointcloud2-data/) to understand what kind of data is in the PointCloud2 ros topic. -->
@@ -110,6 +118,7 @@ Next steps, I want to:
 - Move the rviz config file locally and clean it up a bit
 
 - Sensor Fusion
+  1. Seperate topic and topic_combined into configs and put that back in
   1. Fix tracking
   1. Train a cnn on my parameters 
   1. Fix intensity scaling
