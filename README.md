@@ -114,6 +114,7 @@ Next steps, I want to:
   1. Train a cnn on my parameters 
   1. Fix intensity scaling
   1. Add image detection
+  1. Make filter generic and not dependant on trackmanagement. This way I can use for Localization
 
 - Localization
   1. Move subscriber initialization into the scan matching constructor

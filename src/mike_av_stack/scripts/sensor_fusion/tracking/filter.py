@@ -16,6 +16,7 @@ import numpy as np
 # add project directory to python path to enable relative imports
 import os
 import sys
+import rospy
 
 dir_tracking = os.path.dirname(os.path.realpath(__file__))
 dir_sf = os.path.dirname(dir_tracking)
@@ -29,27 +30,17 @@ class Filter:
         self.params = params
         pass
 
-    def F(self):
-        ############
-        # Step 1: implement and return system matrix F
-        ############
-        dt = self.params.dt
+    def F(self, dt):
+        # Implement and return system matrix F
         return np.matrix([[1,0,0,dt,0,0],
                          [0,1,0,0,dt,0],
                          [0,0,1,0,0,dt],
                          [0,0,0,1,0,0],
                          [0,0,0,0,1,0],
                          [0,0,0,0,0,1]])
-        
-        ############
-        # END student code
-        ############ 
 
-    def Q(self):
-        ############
-        # Step 1: implement and return process noise covariance Q
-        ############
-        dt = self.params.dt
+    def Q(self, dt):
+        # Implement and return process noise covariance Q
         q = self.params.q
         q1 = dt * q
         q2 = (dt**2 * q) / 2
@@ -60,49 +51,41 @@ class Filter:
                          [q2,0,0,q1,0,0],
                          [0,q2,0,0,q1,0],
                          [0,0,q2,0,0,q1]])
-        
-        ############
-        # END student code
-        ############ 
 
-    def predict(self, track):
-        ############
-        # Step 1: predict state x and estimation error covariance P to next timestep, save x and P in track
-        ############
-
-        F = self.F()
-        x = F * track.x
-        P = F * track.P * F.transpose() + self.Q()
-        track.set_x(x)
-        track.set_P(P)
-        
-        ############
-        # END student code
-        ############ 
+    def predict(self, track, current_pos):
+        # Predict state x and estimation error covariance P to next timestep, save x and P in track
+        time = rospy.Time.now()
+        predictions = []
+        for i in range(track.params.predictions + 1):
+            dt = i * track.params.dt
+            F = self.F(dt)
+            x = F * current_pos.x
+            P = F * current_pos.P * F.transpose() + self.Q(dt)
+            predictions.append(track.get_new_prediction(time + rospy.Duration(0, dt), x, P))
+        track.set_predictions(predictions)
 
     def update(self, track, meas):
         ############
         # Step 1: update state x and covariance P with associated measurement, save x and P in track
         ############
         
-        x = track.x
-        P = track.P
+        closest_pred = track.get_nearest_prediction(meas)
 
         # Get the projection matrix that projects the state space into the measurement space
-        H = meas.sensor.get_H(x)
+        H = meas.sensor.get_H(closest_pred.x, meas.params)
 
         H_t = H.transpose()
-        K = P * H_t * np.linalg.inv(self.S(track, meas, H))
+        K = closest_pred.P * H_t * np.linalg.inv(self.S(track, meas, H))
         I = np.identity(self.params.dim_state)
-        track.set_x(x + K * self.gamma(track, meas)) # gamma is transformation of state estimation to measurement state
-        track.set_P((I - K * H) * P)
+        x = (closest_pred.x + K * self.gamma(track, meas)) # gamma is transformation of state estimation to measurement state
+        P = ((I - K * H) * closest_pred.P)
+        current_pos = track.get_new_prediction(meas.stamp, x, P)
 
-        ############
-        # END student code
-        ############ 
         track.update_attributes(meas)
+
+        self.predict(track, current_pos)
     
-    def gamma(self, track, meas):
+    def gamma(self, x, meas):
         ############
         # Step 1: calculate and return residual gamma
         ############
@@ -116,7 +99,7 @@ class Filter:
         
         # return 0
 
-        H = meas.sensor.get_hx(track.x)
+        H = meas.sensor.get_hx(x)
         gamma = meas.z - H
         return gamma
         
@@ -128,9 +111,9 @@ class Filter:
         ############
         # Step 1: calculate and return covariance of residual S
         ############
-
+        closest_pred = track.get_nearest_prediction(meas)
         H_t = H.transpose()
-        return H * track.P * H_t + meas.R
+        return H * closest_pred.P * H_t + meas.R
         
         ############
         # END student code

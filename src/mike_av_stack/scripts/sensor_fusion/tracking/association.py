@@ -97,7 +97,7 @@ class Association:
         # Step 3: return True if measurement lies inside gate, otherwise False
         ############
         
-        limit = chi2.ppf(self.params.gating_threshold, sensor.dim_meas)
+        limit = chi2.ppf(self.params.gating_threshold, sensor.configs.dim_meas)
         if MHD < limit:
             return True
         else:
@@ -111,9 +111,9 @@ class Association:
         ############
         # Step 3: calculate and return Mahalanobis distance
         ############
-
-        gamma = KF.gamma(track, meas) # In terms of z now
-        H = meas.sensor.get_H(track.x)
+        closest_pred = track.get_nearest_prediction(meas)
+        gamma = KF.gamma(closest_pred.x, meas) # In terms of z now
+        H = meas.sensor.get_H(closest_pred.x, track.params)
         S = KF.S(track, meas, H) # Estimation error covariance P transformed to measurement space plus measurement covariance R
         MHD = np.sqrt(gamma.transpose() * np.linalg.inv(S) * gamma)
         
@@ -136,7 +136,7 @@ class Association:
                 print('---no more associations---')
                 break
             track = manager.track_list[ind_track]
-            
+            closest_pred = track.get_nearest_prediction(meas_list[0])
             # check visibility, only update tracks in fov    
             if not meas_list[0].sensor.in_fov(track.x):
                 continue

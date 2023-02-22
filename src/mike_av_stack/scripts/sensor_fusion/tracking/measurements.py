@@ -110,15 +110,10 @@ class Lidar(Sensor):
             d3d.bbox.size.z = det[6]
             dets.append(d3d)
 
-        time_now = time.time_ns()
-        header = Header()
         self.frame_id += 1
-        header.frame_id = self.frame_id 
-        header.stamp.secs = int(time_now / 10e9)
-        header.stamp.nsecs = time_now - (header.stamp.secs * 10e9)
         detection3DArray = Detection3DArray()
-        detection3DArray.header = Header() 
-        detection3DArray.header
+        # detection3DArray.header.frame_id = self.frame_id 
+        detection3DArray.header.stamp = rospy.Time.now()
         detection3DArray.detections = dets
         self.pub_detection.publish(detection3DArray)
 
@@ -159,13 +154,8 @@ class Lidar(Sensor):
         meas_list = []
         for detection in detection3DArray.detections:
             time = detection.header.stamp
-            frame_id = detection.header.frame_id
-            meas = LidarMeasurement(time, detection, self.trackmanager.params)
+            meas = LidarMeasurement(self, time, detection, self.trackmanager.params)
             meas_list.append(meas)
-
-        # predict
-        for track in self.trackmanager.track_list:
-            self.trackmanager.filter.predict(track)
 
         self.trackmanager.association.associate_and_update(self.trackmanager, meas_list, self.trackmanager.filter)
 
@@ -227,12 +217,8 @@ class Camera(Sensor):
         for detection in detection2DArray.detections:
             time = detection.header.stamp
             frame_id = detection.header.frame_id
-            meas = LidarMeasurement(time, detection, self.configs)
+            meas = CameraMeasurement(self, time, detection, self.configs)
             meas_list.append(meas)
-
-        # predict
-        for track in self.trackmanager.track_list:
-            self.trackmanager.filter.predict(track)
 
         self.trackmanager.association.associate_and_update(self.trackmanager, meas_list, self.trackmanager.filter)
 

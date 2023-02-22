@@ -31,6 +31,15 @@ from tracking.filter import Filter
 from tracking.association import Association
 from tools.ros_conversions.transformations import euler_from_quaternion
 
+# Prediction class is needed, because each tracked object will need multiple predictions
+# In the udacity code, we only predicted where the object would be in one time step, but in real life
+# we dont know when the next camera image, or lidar scan will come in. Therefore we need to predict a 
+# few future positions.
+class Prediction():
+    def __init__(self, stamp, x, P) -> None:
+        self.stamp = stamp
+        self.x = x
+        self.P = P
 class Track:
     '''Track class with state, covariance, id, score'''
     def __init__(self, meas, id, params):
@@ -45,8 +54,8 @@ class Track:
         # - initialize track state and track score with appropriate values
         ############
 
-        self.x = np.zeros((6,1))
-        self.P = np.zeros((6,6))
+        x = np.zeros((6,1))
+        P = np.zeros((6,6))
         z = np.zeros((4,1))
         z[3] = 1
         z[0:3] = meas.z
@@ -55,14 +64,14 @@ class Track:
         M_rot = T[0:3, 0:3]
 
         # Compute position estimation and error covariance
-        self.x[0:3] = (T * z)[0:3]
-        self.P[0:3, 0:3] = M_rot * R * M_rot.transpose()
+        x[0:3] = (T * z)[0:3]
+        P[0:3, 0:3] = M_rot * R * M_rot.transpose()
 
         # Compute velocity estimation error covariance
         P_vel = np.matrix([[params.sigma_p44**2, 0, 0],
                            [0, params.sigma_p55**2, 0],
                            [0, 0, params.sigma_p66**2]])
-        self.P[3:6, 3:6] = P_vel
+        P[3:6, 3:6] = P_vel
 
         # self.x = np.matrix([[49.53980697],
         #                 [ 3.41006279],
@@ -79,10 +88,10 @@ class Track:
 
         self.state = 'initialized'
         self.score = 1.0 / params.window
-        
-        ############
-        # END student code
-        ############ 
+
+        # Initialize empty list of predictions
+        # The 0th element will be the most recent updated measurement
+        self.predictions = [Prediction(rospy.Time.now(), x, P)]
                
         # other track attributes
         self.id = id
@@ -90,17 +99,29 @@ class Track:
         self.length = meas.length
         self.height = meas.height
         self.yaw =  np.arccos(M_rot[0,0]*np.cos(meas.yaw) + M_rot[0,1]*np.sin(meas.yaw)) # transform rotation from sensor to vehicle coordinates
-        self.t = meas.t
 
-    def set_x(self, x):
-        self.x = x
-        
-    def set_P(self, P):
-        self.P = P  
-        
-    def set_t(self, t):
-        self.t = t  
-        
+    def set_predictions(self, predictions):
+        self.predictions = predictions
+
+    # **********!!!*!*!*!*!*!* Make this take in a time stamp and make most fxns in filter.py take in a time stamp
+    def get_nearest_prediction(self, meas):
+        stamp = meas.stamp
+        if stamp < self.predictions[0].stamp:
+            rospy.logwarn('Comparing predictions with old measurement')
+            return self.predictions[0]
+        elif stamp > self.predictions[self.params.predictions]:
+            rospy.logwarn('Predictions are outdated')
+            return self.predictions[self.params.predictions]
+        else :
+            for i, prediction in enumerate(self.predictions[1:]):
+                if np.abs(meas.stamp - prediction.stamp) < rospy.Duration(0, self.params.dt / 2.0):
+                    rospy.loginfo('Nearest prediction is ', i, ' in the future at time: ', prediction.stamp)
+                    return prediction
+                
+    def get_new_prediction(self, stamp, x, P):
+        return Prediction(stamp, x, P)
+
+
     def update_attributes(self, meas):
         # use exponential sliding average to estimate dimensions and orientation
         if meas.sensor.name == 'lidar':
@@ -155,8 +176,9 @@ class Trackmanagement:
         # delete old tracks   
         self.track_list_lock.acquire()
         for track in self.track_list:
+            closest_pred = track.get_nearest_prediction(meas_list[0])
             if ((track.state in ['confirmed'] and track.score < self.params.delete_threshold) or
-                    ((track.P[0, 0] > self.params.max_P or track.P[1, 1] > self.params.max_P)) or
+                    ((closest_pred.P[0, 0] > self.params.max_P or closest_pred.P[1, 1] > self.params.max_P)) or
                     track.score < 0.05):
                 print('deleting track no.', track.id)
                 self.track_list.remove(track)
@@ -212,19 +234,20 @@ class Trackmanagement:
 
 class Measurement:
     '''Measurement class including measurement values, covariance, timestamp, sensor'''
-    def __init__(self, num_frame,params):
+    def __init__(self, sensor, stamp):
         # create measurement object
-        self.t = (num_frame - 1) * params.dt # time
+        self.sensor = sensor
+        self.stamp = stamp # time
 
 class LidarMeasurement(Measurement):
-    def __init__(self, num_frame, detection, params):
-        super().__init__(num_frame, params)
+    def __init__(self, sensor, stamp, detection, params):
+        super().__init__(sensor, stamp)
 
         # create measurement object
         sigma_lidar_x = params.sigma_lidar_x # load params
         sigma_lidar_y = params.sigma_lidar_y
         sigma_lidar_z = params.sigma_lidar_z
-        self.z = np.zeros((params.dim_meas,1)) # measurement vector
+        self.z = np.zeros((self.sensor.configs.dim_meas,1)) # measurement vector
         self.z[0] = detection.bbox.center.position.x
         self.z[1] = detection.bbox.center.position.y
         self.z[2] = detection.bbox.center.position.z
@@ -240,12 +263,12 @@ class LidarMeasurement(Measurement):
         self.yaw = euler_from_quaternion(q_array)
 
 class CameraMeasurement(Measurement):
-    def __init__(self, num_frame, detection, params):
-        super().__init__(num_frame, params)
+    def __init__(self, sensor, stamp, detection, params):
+        super().__init__(sensor, stamp)
 
         sigma_cam_i = params.sigma_cam_i # load params
         sigma_cam_j = params.sigma_cam_j
-        self.z = np.zeros((params.dim_meas, 1))
+        self.z = np.zeros((self.sensor.configs.dim_meas, 1))
         self.z[0] = detection.bbox.center.x
         self.z[1] = detection.bbox.center.y
         self.length = detection.bbox.size_x
