@@ -1,27 +1,82 @@
-#! ~/anaconda3/envs/waymo/bin/python
+#!/home/mike/anaconda3/envs/waymo/bin/python3
 
 import numpy as np
 import cv2
 import torch
+import open3d as o3d
 
+def show_bev(bev_maps, configs):
 
+    print(bev_maps.shape)
+    bev_map = (bev_maps.cpu().data.squeeze().permute(1, 2, 0).numpy() * 255).astype(np.uint8)
+    bev_map = cv2.resize(bev_map, (configs.bev_width, configs.bev_height))
+    bev_map = cv2.rotate(bev_map, cv2.ROTATE_180)
+    cv2.imshow('BEV map', bev_map)
+      
+    cv2.waitKey(0) 
+    
+
+# visualize lidar point-cloud
+def show_pcl(pcl):
+
+    ####### ID_S1_EX2 START #######     
+    #######
+    print("student task ID_S1_EX2")
+    pcl = pcl[:,:3]
+
+    # step 1 : initialize open3d with key callback and create window
+    vis = o3d.visualization.VisualizerWithKeyCallback()
+    vis.create_window()
+    
+    # step 2 : create instance of open3d point-cloud class
+    pcd = o3d.geometry.PointCloud()
+
+    # step 3 : set points in pcd instance by converting the point-cloud into 3d vectors (using open3d function Vector3dVector)
+    pcd.points = o3d.utility.Vector3dVector(pcl)
+
+    # step 4 : for the first frame, add the pcd instance to visualization using add_geometry; for all other frames, use update_geometry instead
+    # if(cnt_frame == 0):
+    #     vis.add_geometry(pcd)
+    # else:
+    #     vis.update_geometry(pcd)
+    #     vis.update_renderer()
+    #     vis.poll_events()
+
+    vis.add_geometry(pcd)
+
+    
+    # step 5 : visualize point cloud and keep window open until right-arrow is pressed (key-code 262)
+    def callback(vis):
+        # vis.clear_geometries()
+        vis.destroy_window()
+
+    vis.register_key_callback(262, callback)
+    vis.run()
+
+    #######
+    ####### ID_S1_EX2 END #######     
 
 # create birds-eye view of lidar data
-def bev_from_pcl(lidar_pcl, configs, viz=False):
+def bev_from_pcl(lidar_pcl, configs, viz=False, verbose=False):
 
     # remove lidar points outside detection area and with too low reflectivity
     mask = np.where((lidar_pcl[:, 0] >= configs.lim_x[0]) & (lidar_pcl[:, 0] <= configs.lim_x[1]) &
-                    (lidar_pcl[:, 1] >= configs.lim_y[0]) & (lidar_pcl[:, 1] <= configs.lim_y[1]) &
-                    (lidar_pcl[:, 2] >= configs.lim_z[0]) & (lidar_pcl[:, 2] <= configs.lim_z[1]))
+                    (lidar_pcl[:, 1] >= configs.lim_y[0]) & (lidar_pcl[:, 1] <= configs.lim_y[1]))# &
+                    #(lidar_pcl[:, 2] >= configs.lim_z[0]) & (lidar_pcl[:, 2] <= configs.lim_z[1]))
     lidar_pcl = lidar_pcl[mask]
     
     # shift level of ground plane to avoid flipping from 0 to 255 for neighboring pixels
     lidar_pcl[:, 2] = lidar_pcl[:, 2] - configs.lim_z[0]  
 
+    if verbose:
+        print(lidar_pcl[0,:])
+        print("Min and max height, %f, %f" %(np.min(lidar_pcl[:,2]), np.max(lidar_pcl[:,2])))
+
     # convert sensor coordinates to bev-map coordinates (center is bottom-middle)
     ####### ID_S2_EX1 START #######     
     #######
-    print("student task ID_S2_EX1")
+    if verbose:
+        print("student task ID_S2_EX1")
 
     ## step 1 : compute bev-map discretization by dividing x-range by the bev-image height (see configs)
     delta_x_rw_meters = configs.lim_x[1] - configs.lim_x[0]
@@ -37,8 +92,8 @@ def bev_from_pcl(lidar_pcl, configs, viz=False):
     lidar_pcl_copy[:, 1] = np.int_(np.floor(lidar_pcl_copy[:, 1] / meters_pixel_y) + (configs.bev_width + 1) / 2)
 
     # step 4 : visualize point-cloud using the function show_pcl from a previous task
-    # if viz:
-    #     show_pcl(lidar_pcl_copy)
+    if viz:
+        show_pcl(lidar_pcl_copy)
     
     #######
     ####### ID_S2_EX1 END #######     
@@ -47,7 +102,8 @@ def bev_from_pcl(lidar_pcl, configs, viz=False):
     # Compute intensity layer of the BEV map
     ####### ID_S2_EX2 START #######     
     #######
-    print("student task ID_S2_EX2")
+    if verbose:
+        print("student task ID_S2_EX2")
 
     ## step 1 : create a numpy array filled with zeros which has the same dimensions as the BEV map
     intensity_map = np.zeros((configs.bev_height + 1, configs.bev_width + 1))
@@ -69,13 +125,13 @@ def bev_from_pcl(lidar_pcl, configs, viz=False):
 
     lidar_pcl_top_copy = np.copy(lidar_pcl_top[:,3])
 
-    mean = 0.114370
-    std = 0.12
+    mean = 0.955248
+    std = 0.026137
     if viz:
         mean = np.mean(lidar_pcl_top_copy)
         std = np.std(lidar_pcl_top_copy)
 
-    devs = 3
+    devs = 1
     min = 0 if (mean - devs * std) < 0 else mean - devs * std
     max = 1 if (mean + devs * std) > 1 else mean + devs * std
 
@@ -120,7 +176,8 @@ def bev_from_pcl(lidar_pcl, configs, viz=False):
     # Compute height layer of the BEV map
     ####### ID_S2_EX3 START #######     
     #######
-    print("student task ID_S2_EX3")
+    if verbose:
+        print("student task ID_S2_EX3")
 
     ## step 1 : create a numpy array filled with zeros which has the same dimensions as the BEV map
     height_map = np.zeros((configs.bev_height + 1, configs.bev_width + 1))
@@ -163,9 +220,6 @@ def bev_from_pcl(lidar_pcl, configs, viz=False):
     bev_map[1, :, :] = height_map[:configs.bev_height, :configs.bev_width]  # g_map
     bev_map[0, :, :] = intensity_map[:configs.bev_height, :configs.bev_width]  # b_map
 
-    # TODO Plot the intensity and height histograms like in the assignment
-    # lmao just zoom in like all the way
-
     # expand dimension of bev_map before converting into a tensor
     s1, s2, s3 = bev_map.shape
     bev_maps = np.zeros((1, s1, s2, s3))
@@ -173,4 +227,7 @@ def bev_from_pcl(lidar_pcl, configs, viz=False):
 
     bev_maps = torch.from_numpy(bev_maps)  # create tensor from birds-eye view
     input_bev_maps = bev_maps.to(configs.device, non_blocking=True).float()
+
+    # show_bev(input_bev_maps, configs)
+
     return input_bev_maps

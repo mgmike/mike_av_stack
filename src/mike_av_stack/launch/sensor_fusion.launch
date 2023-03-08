@@ -1,6 +1,10 @@
 <!-- -->
 <launch>
 
-    <node pkg="mike_av_stack" name="sensor_fusion" type="sensor_fusion.py" output="screen" required="true"/>
+    <arg name="viz" default="true"/>
+
+    <node pkg="mike_av_stack" name="sensor_fusion" type="sensor_fusion.py" output="screen">
+        <param name="viz" value="$(arg viz)"/>
+    </node>
 
 </launch>

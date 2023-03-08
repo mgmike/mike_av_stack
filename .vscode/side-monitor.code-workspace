@@ -1,0 +1,12 @@
+{
+	"folders": [
+		{
+			"name": "autonomous_sim",
+			"path": ".."
+		}
+	],
+	"settings": {
+		"cmake.sourceDirectory": "/media/mike/Storage/Documents/autonomous_sim/src",
+		"python.analysis.typeCheckingMode": "basic"
+	}
+}

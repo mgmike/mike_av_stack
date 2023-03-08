@@ -1,0 +1,3 @@
+<launch>
+    <node pkg="mike_av_stack" name="traffic_manager" type="traffic_manager.py" output="screen" required="true"/>
+</launch>
