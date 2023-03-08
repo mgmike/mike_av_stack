@@ -23,6 +23,7 @@ from geometry_msgs.msg import Pose, Point, Vector3, Quaternion
 # from tf.transformations import quaternion_from_euler, euler_from_quaternion
 import detection.objdet_pcl as pcl
 import detection.objdet_detect as odet
+from detection.objdet_models.yolov7.yolov7 import Yolov7
 import numpy as np
 import time
 from tracking.trackmanagement import Measurement, LidarMeasurement, CameraMeasurement
@@ -35,6 +36,8 @@ dir_scripts = os.path.dirname(dir_sf)
 sys.path.append(dir_scripts)
 from tools.ros_conversions.transformations import quaternion_from_euler
 import ros_numpy
+import cv2
+import json
 
 
 class Sensor:
@@ -188,6 +191,12 @@ class Lidar(Sensor):
 class Camera(Sensor):
     def __init__(self, name, configs, trackmanager):
         super().__init__(name, configs, trackmanager)
+
+        # Add yolo configs
+        with open(os.path.join(dir_sf, 'configs', 'yolov7.json')) as j_object:
+            configs.yolov7 = json.load(j_object)
+
+        self.init_yolo()
         rospy.Subscriber(self.configs.base_topic, Image, self.detection_callback)
         self.configs.fov = [-0.35, 0.35] # angle of field of view in radians, inaccurate boundary region was removed
 
@@ -208,9 +217,13 @@ class Camera(Sensor):
 
         self.pub_detection = rospy.Publisher("/sensor_fusion/detection/camera/" + self.configs.id, Detection2DArray, queue_size=10)
         
-    def detection_callback(self, image):
-        rospy.loginfo('Got an image')
+    def init_yolo(self):
+        rospy.loginfo(f'Initializing Yolov7, cv version: {cv2.__version__}')
+        self.yolo = Yolov7(self.configs.yolov7)
 
+
+    def detection_callback(self, image):
+        self.yolo.detect(image)
 
     def track_manage_callback(self, detection2DArray):        
         meas_list = []

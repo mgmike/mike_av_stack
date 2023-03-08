@@ -9,7 +9,7 @@
             "height": 600,
             "fov": 90.0,
             "sensor_tick": 0.05,
-            "gamma": 2.2,
+            "gamma": 3.5,
             "shutter_speed": 200.0,
             "iso": 200.0,
             "fstop": 8.0,

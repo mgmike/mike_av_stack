@@ -23,6 +23,34 @@ Carla ros bridge (0.9.13) and Ros2 [Foxy Fitzroy from source](https://docs.ros.o
 Follow [this guide](https://www.dhanoopbhaskar.com/blog/2020-05-07-working-with-python-3-in-ros-kinetic-or-melodic/)
 to enable python3 in ros melodic
 
+And [this guide](https://cyaninfinite.com/ros-cv-bridge-with-python-3/) to compile cv_bridge for python3
+but change toe catkin config line to:
+
+```bash
+catkin config \
+-DPYTHON_EXECUTABLE=/usr/bin/python3 \
+-DPYTHON_INCLUDE_DIR=/usr/include/python3.6m \
+-DPYTHON_LIBRARY=/usr/lib/x86_64-linux-gnu/libpython3.6m.so \
+-DCUDA_TOOLKIT_ROOT_DIR=/home/mike/anaconda3/envs/cuda11.4/bin \
+-DSWARMIO_BUILD_MOD=INSTALL \
+--extend /opt/carla-ros-bridge/melodic/setup.bash
+```
+
+!!!!!!!!!!!!!!!!!!!Try to rebuild cv_bridge in this catkin ws again instead of its own.
+
+[This link is also very useful for melodic, cv2 and anaconda](https://stackoverflow.com/questions/49221565/unable-to-use-cv-bridge-with-ros-kinetic-and-python3)
+
+```bash
+catkin config \
+-DPYTHON_EXECUTABLE=/home/mike/anaconda3/envs/waymo/bin/python3 \
+-DPYTHON_INCLUDE_DIR=/home/mike/anaconda3/envs/waymo/include/python3.7m \
+-DPYTHON_LIBRARY=/home/mike/anaconda3/envs/waymo/lib/libpython3.7m.so \
+-DCUDA_TOOLKIT_ROOT_DIR=/home/mike/anaconda3/envs/cuda11.4/bin \
+-DSWARMIO_BUILD_MOD=INSTALL \
+-DSETUPTOOLS_DEB_LAYOUT=OFF \
+--extend /opt/carla-ros-bridge/melodic/setup.bash
+```
+
 You also will need simple-pid for manual control.
 
   ```bash
