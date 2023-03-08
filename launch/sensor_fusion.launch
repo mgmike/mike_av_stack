@@ -1,0 +1,47 @@
+<!-- -->
+<launch>
+
+    <arg name="viz" default="true"/>
+    <arg name="image_detection_model" default="yolov7"/>
+    <arg name="yolov7" default="true"/>
+    <arg name="weights" default='yolov7.pt' doc='model.pt path(s)'/>
+    <arg name="source" default='inference/images' doc='source  # file/folder, 0 for webcam'/>
+    <arg name="img_size" default="640" doc='inference size (pixels)'/>
+    <arg name="conf_thres" default="0.25" doc='object confidence threshold'/>
+    <arg name="iou_thres" default="0.45" doc='IOU threshold for NMS'/>
+    <arg name="device" default='' doc='cuda device, i.e. 0 or 0,1,2,3 or cpu'/>
+    <arg name="save_txt" default="true" doc='save results to *.txt'/>
+    <arg name="save_conf" default="true" doc='save confidences in --save-txt labels'/>
+    <arg name="nosave" default="true" doc='do not save images/videos'/>
+    <arg name="classes" default="car,person,bicycle" doc='filter by class:0,2,3'/>
+    <arg name="agnostic_nms" default="true" doc='class-agnostic NMS'/>
+    <arg name="augment" default="true" doc='augmented inference'/>
+    <arg name="update" default="true" doc='update all models'/>
+    <arg name="project" default='runs/detect' doc='save results to project/name'/>
+    <arg name="name" default='exp' doc='save results to project/name'/>
+    <arg name="exist_ok" default="true" doc='existing project/name ok, do not increment'/>
+    <arg name="no_trace" default="true" doc='don`t trace model'/>
+
+    <node pkg="mike_av_stack" name="sensor_fusion" type="sensor_fusion.py" output="screen">
+        <param name="viz" value="$(arg viz)"/>
+        <param name="image_detection_model" value="$(arg image_detection_model)"/>
+        <param name="weights"  value="$(arg weights)"/>
+        <param name="source"  value="$(arg source)"/>
+        <param name="img_size" value="$(arg img_size)"/>
+        <param name="conf_thres" value="$(arg conf_thres)"/>
+        <param name="iou_thres" value="$(arg iou_thres)"/>
+        <param name="device"  value="$(arg device)"/>
+        <param name="save_txt" value="$(arg save_txt)"/>
+        <param name="save_conf" value="$(arg save_conf)"/>
+        <param name="nosave"  value="$(arg nosave)"/>
+        <param name="classes"  value="$(arg classes)"/>
+        <param name="agnostic_nms" value="$(arg agnostic_nms)"/>
+        <param name="augment"  value="$(arg augment)"/>
+        <param name="update"  value="$(arg update)"/>
+        <param name="project"  value="$(arg project)"/>
+        <param name="name"  value="$(arg name)"/>
+        <param name="exist_ok" value="$(arg exist_ok)"/>
+        <param name="no_trace" value="$(arg no_trace)"/>
+    </node>
+
+</launch>

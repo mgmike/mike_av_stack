@@ -1,0 +1,17 @@
+<!-- Localization -->
+<launch>
+
+    <arg name="map_name" default="map.pcd"/>
+    <!-- Options: icp, ndt, icps -->
+    <arg name="scan_matching_algorithm" default="icp"/>
+    <arg name="viz" default="true"/>
+    <arg name="iters" default="20"/>
+
+
+   <node pkg="mike_av_stack" type="localization" name="localization" output="screen">
+        <param name="map_name" value="$(arg map_name)"/>
+        <param name="scan_matching_algorithm" value="$(arg scan_matching_algorithm)"/>
+        <param name="viz" value="$(arg viz)"/>
+   </node>
+
+</launch>
