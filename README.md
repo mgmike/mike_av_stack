@@ -6,19 +6,16 @@ I am using the Carla simulator bult on Unreal Engine to run simulations, and usi
 
 # Requirements
 
-OS: Ubuntu 18.04\
+OS: Ubuntu 20.04\
 Unreal engine: 4.26\
-carla-simulator/bionic (apt installation): 0.9.13\
-Ros (apt installation): Melodic\
-carla-ros-bridge/bionic (apt installation): 0.9.10-1
+[carla-simulator: 0.9.13](https://carla-releases.s3.eu-west-3.amazonaws.com/Linux/CARLA_0.9.13.tar.gz)\
+Ros (apt installation): Foxy\
+[carla-ros-bridge/bionic: 0.9.10-1](https://carla.readthedocs.io/projects/ros-bridge/en/latest/ros_installation_ros2/)
+[PCL point cloud]()
 
-<!-- 
-This is for when I eventually create a fork for ros2
-
-Carla: 0.9.13 [built from source](https://carla.readthedocs.io/en/latest/build_linux/)
-Carla ros bridge (0.9.13) and Ros2 [Foxy Fitzroy from source](https://docs.ros.org/en/foxy/Installation/Ubuntu-Install-Debians.html)
--->
-
+```bash
+sudo apt-get install ros-foxy-pcl-ros ros-foxy-pcl-conversions ros-foxy-pcl-msgs
+```
 
 Follow [this guide](https://www.dhanoopbhaskar.com/blog/2020-05-07-working-with-python-3-in-ros-kinetic-or-melodic/)
 to enable python3 in ros melodic

@@ -17,6 +17,6 @@ public:
 	Eigen::Matrix4d transformation_matrix;
   	pcl::KdTreeFLANN<PointT> kdtree;
 
-    ICPS(PointCloudT::Ptr target, Pose startingPose, int iterations, int dist);
-	void get_transform(const sensor_msgs::PointCloud2ConstPtr& cloud_msg);
+    ICPS(PointCloudT::Ptr target, std::string topic, Pose startingPose, int iterations, int dist);
+	void get_transform(const sensor_msgs::msg::PointCloud2::SharedPtr cloud_msg);
 };

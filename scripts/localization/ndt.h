@@ -9,6 +9,6 @@ public:
 	int iterations;
     pcl::NormalDistributionsTransform<pcl::PointXYZ, pcl::PointXYZ> ndt;
 
-    NDT(PointCloudT::Ptr target, Pose startingPose, int iterations);
-	void get_transform(const sensor_msgs::PointCloud2ConstPtr& cloud_msg);
+    NDT(PointCloudT::Ptr target, std::string topic, Pose startingPose, int iterations);
+	void get_transform(const sensor_msgs::msg::PointCloud2::SharedPtr cloud_msg);
 };

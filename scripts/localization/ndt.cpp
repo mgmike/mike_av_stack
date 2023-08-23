@@ -1,6 +1,6 @@
 #include "ndt.h"
 
-NDT::NDT(PointCloudT::Ptr t, Pose sp, int iter): Scan_Matching(t), startingPose(sp), iterations(iter) {
+NDT::NDT(PointCloudT::Ptr t, std::string topic, Pose sp, int iter): Scan_Matching(t, topic), startingPose(sp), iterations(iter) {
     ndt.setTransformationEpsilon(0.0001);
     ndt.setInputTarget(target);
     ndt.setResolution(1);
@@ -11,7 +11,7 @@ NDT::NDT(PointCloudT::Ptr t, Pose sp, int iter): Scan_Matching(t), startingPose(
 	// renderPointCloud(viewer, target, "map", Color(0,0,1));
 }
 
-void NDT::get_transform(const sensor_msgs::PointCloud2ConstPtr& cloud_msg){
+void NDT::get_transform(const sensor_msgs::msg::PointCloud2::SharedPtr cloud_msg){
 
     // Create pcl point cloud
     pcl::PCLPointCloud2* cloud = new pcl::PCLPointCloud2;

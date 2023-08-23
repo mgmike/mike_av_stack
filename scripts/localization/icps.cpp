@@ -1,6 +1,6 @@
 #include "icps.h"
 
-ICPS::ICPS(PointCloudT::Ptr t, Pose sp, int iter, int dist = 2): Scan_Matching(t), startingPose(sp), iterations(iter), dist(dist) {
+ICPS::ICPS(PointCloudT::Ptr t, std::string topic, Pose sp, int iter, int dist = 2): Scan_Matching(t, topic), startingPose(sp), iterations(iter), dist(dist) {
   // Create a KDtree once with target as input
   kdtree.setInputCloud(target);
 
@@ -53,7 +53,7 @@ vector<Pair> PairPoints(vector<int> associations, PointCloudT::Ptr target, Point
 	return pairs;
 }
 
-void ICPS::get_transform(const sensor_msgs::PointCloud2ConstPtr& cloud_msg){
+void ICPS::get_transform(const sensor_msgs::msg::PointCloud2::SharedPtr cloud_msg){
 
 
   // Create pcl point cloud

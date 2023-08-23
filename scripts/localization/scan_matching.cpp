@@ -1,12 +1,20 @@
 #include "scan_matching.h"
 
-Scan_Matching::Scan_Matching(PointCloudT::Ptr t): target(t) {}
+Scan_Matching::Scan_Matching(PointCloudT::Ptr t, std::string topic): Node("localization"), target(t) {
+	this->topic = topic;
+
+	// this->lidar_sub = this->create_subscription<sensor_msgs::msg::PointCloud2>(
+	// 	topic, 10, std::bind(&Scan_Matching::get_transform, this, _1)
+	// );
+}
+
+
 
 void Scan_Matching::set_map(PointCloudT::Ptr t){
     target = t;
 } 
 
-void Scan_Matching::get_transform(const sensor_msgs::PointCloud2ConstPtr& cloud_msg){
+void Scan_Matching::get_transform(const sensor_msgs::msg::PointCloud2::SharedPtr cloud_msg){
 }
 
 void Scan_Matching::enable_viz(){
@@ -14,7 +22,7 @@ void Scan_Matching::enable_viz(){
   	viewer->setBackgroundColor(0, 0, 0);
 	renderPointCloud(viewer, target, "map", Color(0,0,1));
 	viz = true;
-	ROS_INFO("Starting vis");
+	RCLCPP_INFO(this->get_logger(),"Starting vis");
 	// while (!viewer->wasStopped ())
 	// {
 	// 	std::cout << "Spun" << std::endl;
