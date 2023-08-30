@@ -12,6 +12,7 @@ Unreal engine: 4.26\
 Ros (apt installation): Foxy\
 [carla-ros-bridge/bionic: 0.9.10-1](https://carla.readthedocs.io/projects/ros-bridge/en/latest/ros_installation_ros2/)
 [PCL point cloud]()
+[ros2_numpy](https://github.com/Box-Robotics/ros2_numpy)
 
 ```bash
 sudo apt-get install ros-foxy-pcl-ros ros-foxy-pcl-conversions ros-foxy-pcl-msgs

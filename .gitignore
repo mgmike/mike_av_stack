@@ -1,11 +1,5 @@
-Dockerfile
-build/
-install/
-devel/
-log/
-src/ros_tutorials
-scripts/__pycache__
-scripts/localization/maps
+.vscode/
+cache/
 *.pyc
 *.pt
 *.zip

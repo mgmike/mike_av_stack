@@ -1,0 +1,2 @@
+easydict==1.10
+numpy==1.23.5
