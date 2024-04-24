@@ -59,14 +59,19 @@ def generate_launch_description():
             '/carla_spawn_objects.launch.py']),
         launch_arguments={
             'objects_definition_file': os.path.join(
-                get_package_share_directory('mike_av_stack_sensor_fusion'),'configs','objects.json')
+                get_package_share_directory('mike_av_stack'),'configs','objects.json')
             }.items()
+        )
+    carla_manual_control = IncludeLaunchDescription(
+        PythonLaunchDescriptionSource([os.path.join(
+            get_package_share_directory('carla_manual_control')),
+            '/carla_manual_control.launch.py'])
         )
     rviz = Node(
         package='rviz2',
         executable='rviz2',
         name='rviz2',
-        arguments=['-d', [os.path.join(get_package_share_directory('mike_av_stack_sensor_fusion'), 'configs','config.rviz')]]
+        arguments=['-d', [os.path.join(get_package_share_directory('mike_av_stack'), 'configs','config.rviz')]]
     )
     point_cloud_stacker = Node(
         package='mike_av_stack',
@@ -78,5 +83,6 @@ def generate_launch_description():
         carla_ros_bridge,
         carla_spawn_objects,
         rviz,
-        point_cloud_stacker
+        point_cloud_stacker,
+        carla_manual_control
     ])

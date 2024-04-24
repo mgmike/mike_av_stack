@@ -31,10 +31,12 @@ RUN sudo apt-get install -y ros-foxy-vision-msgs ros-foxy-derived-object-msgs py
 RUN pip install -r requirements.txt
 
 WORKDIR /home/ws_av/src/
-RUN git clone git@github.com:Box-Robotics/ros2_numpy.git
+# RUN git clone git@github.com:Box-Robotics/ros2_numpy.git
 WORKDIR /home/ws_av/
-RUN source /opt/ros/foxy/setup.bash
-RUN colcon build
+# RUN source /opt/ros/foxy/setup.bash
+# RUN rosdep update
+# RUN rosdep install --from-paths src -y --ignore-src --rosdistro foxy
+# RUN colcon build
 
 CMD ["/bin/bash"]
 

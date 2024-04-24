@@ -69,40 +69,30 @@ You will need to compile tf2 for python3, so follow [these steps](https://answer
 
 # Installation
 
-Source the carla ros bridge enviornment
-
+Make sure the carla-ros-bridge is built somewhere.
+Then source the carla ros bridge enviornment
 
   ```bash
-  source /opt/carla-ros-bridge/melodic/setup.bash
+  cd ~/carla-ros-bridge/
+  source /opt/ros/foxy/setup.bash 
+  rosdep update
+  rosdep install --from-paths src --ignore-src -r
+  colcon build
+  source ./install/setup.bash
   ```
   
 
-Then make the catkin workspace
+The mike_av_stack workspace will be a child of the parent carla_ros_bridge catkin workspace.
+Then make the package and source 
 
   ```bash
-  catkin_make
+  cd ~/colcon_ws
+  colcon build --packages-select mike_av_stack
+  source install/setup.bash
   ```
-
-<!-- Then create the package
-    This actually might only be initialize so ill have to check
-    I will refine this process
-
-  ```bash
-  cd ~/<this project directory>/src
-  catkin_create_pkg mike_av_stack std_msgs rospy
-  ``` -->
   
 
 # How to Run
-
-Source the current workspace:
-
-  ```bash
-  cd .../catkin_ws/
-  source devel/setup.bash
-  ```
-
-Then the current workspace will be a child of the parent carla_ros_bridge catkin workspace.
 
 Start carla on another terminal
 
@@ -110,12 +100,11 @@ Start carla on another terminal
   cd /opt/carla-simulator
   ./CarlaUE4.sh
   ```
-  
 
 By default, running the project mike_av_stack 
 
   ```bash
-  roslaunch mike_av_stack mike_av_stack.launch
+  ros2 launch mike_av_stack av_sf.launch.py
   ```
 
 will do the following:
@@ -124,8 +113,7 @@ will do the following:
 - Opens rviz
 - Runs helpful tools
   - point cloud stacker
-- Runs the sensor_fusion node
-- Runs the localization node
+- Starts carla-ros-bridge
 
 # Docs
 
