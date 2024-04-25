@@ -5,13 +5,15 @@ from glob import glob
 package_name = 'mike_av_stack'
 point_cloud_stacker = 'mike_av_stack/point_cloud_stacker'
 traffic_manager = 'mike_av_stack/traffic_manager'
+visualizations = 'mike_av_stack/visualizations'
 
 setup(
     name=package_name,
-    version='2.0.2',
+    version='2.0.3',
     packages=[package_name, 
               point_cloud_stacker,
-              traffic_manager],
+              traffic_manager,
+              visualizations],
     data_files=[
         ('share/ament_index/resource_index/packages',
             ['resource/' + package_name]),
@@ -29,6 +31,7 @@ setup(
     entry_points={
         'console_scripts': [
             'point_cloud_stacker = mike_av_stack.point_cloud_stacker.point_cloud_stacker:main',
+            'visualizations = mike_av_stack.visualizations.visualizations:main',
         ],
     },
 )

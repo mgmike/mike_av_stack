@@ -104,6 +104,7 @@ Start carla on another terminal
 By default, running the project mike_av_stack 
 
   ```bash
+  export ROS_DOMAIN_ID=1
   ros2 launch mike_av_stack av_sf.launch.py
   ```
 
@@ -132,11 +133,12 @@ Next steps, I want to:
 - Move the rviz config file locally and clean it up a bit
 
 - Sensor Fusion
-  1. Seperate topic and topic_combined into configs and put that back in
-  1. Fix tracking
+  1. Make visualizers generic so it depends on configs and I can have one per sensor detections
+  1. Make visualizers optional based off arguments
+  1. Research namespaces and group everything by that instead of just sensor_fusion base topic
+  1. Make a new node to get positions of vehicles for lidar to train yolov8 on 
   1. Train a cnn on my parameters 
   1. Fix intensity scaling
-  1. Add image detection
   1. Make filter generic and not dependant on trackmanagement. This way I can use for Localization
 
 - Localization

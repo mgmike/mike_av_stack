@@ -78,11 +78,17 @@ def generate_launch_description():
         executable='point_cloud_stacker',
         name='point_cloud_stacker'
     )
+    visualizations = Node(
+        package='mike_av_stack',
+        executable="visualizations",
+        name="visualizations"
+    )
    
     return LaunchDescription([
         carla_ros_bridge,
         carla_spawn_objects,
         rviz,
         point_cloud_stacker,
-        carla_manual_control
+        carla_manual_control,
+        visualizations
     ])
