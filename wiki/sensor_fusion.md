@@ -13,16 +13,23 @@ roslaunch mike_av_stack sensor_fusion.launch sensor_fusion:=false
 
 ## My Implementation
 
-Detection is implemented for lidar only at the moment with FPN ResNet from the udacity course. Tracking is implemented for both lidar and camera. Detection subscribes to a point cloud topic. The raw lidar point cloud topic from the carla ros bridge is only a portion of the full 360% scan, so the sensor fusion node actually subscribes to the topic output by my point cloud stacker tool. This is then fed into the FPN resnet and detections are sent to another topic. The Sensor class has two child classes, Lidar and Camera which have callback functions to handle the sensor data then the detections. The tracking process is inside the detection callback function, filters and associates FPN ResNet output detections with known tracked objects, and updates the known tracked object list in the Trackmanagement class. The following crudely drawn diagram shows this at a high level.
+Detection is implemented using an FPN ResNet model. For lidar, detection nodes subscribe to a point cloud topic. The raw lidar point cloud topic from the carla ros bridge is only a portion of the full 360% scan, so the sensor fusion node actually subscribes to the topic output by the Mike AV stack point cloud stacker tool mentioned in the [main docs](../README.md). This full point cloud is converted to a 3 channel Birds Eye View image containing intensity, density of points, and max height of points. The BEV is then fed into the FPN resnet and detections are sent to another topic. The Sensor class has two child classes, Lidar and Camera which have callback functions to handle the sensor data then the detections. The tracking process is inside the detection callback function, which filters and associates FPN ResNet output detections with known tracked objects, and updates the known tracked object list in the Trackmanagement class. The following crudely drawn diagram shows this at a high level.
 ![](SensorFusionDiagram.png)
 
-At a slightly lower level, the following diagram from the udacity self driving car class has some more details.
+The data flow from the udacity self driving car course is all executed in one synchronous loop shown here.
 ![](mtt-data-flow.png)
 
-This is a massive improvement upon the udacity code as this update process is now asynchronous. I also made sure to make the track list thread safe as many callbacks can call to change this or read from it at the same time.
+My implementation is a massive improvement upon the udacity code as this update process is now asynchronous so camera and lidar updates can be processed in any order. I also made sure to make the track list thread safe as many callbacks can call to change this or read from it at the same time.
 
 In addition, I have implemented and added to the sensors.json that specifies sensors for carla ros bridge. My sensor fusion code is generic and will create a unique Lidar or Camera object for every camera, and each Sensor will subscribe to its base topic. Each sensor is also given the same trackmanagement object which also has a filter and association object for the other steps.
 
+
+[Back to Stack](../README.md)
+
+# Demos
+
+Below is a demo of camera detection. The left most display in rviz is a topic that contains images from the front camera with boxes overlayed in the image. This is purly for visualization and is only updated when a detection is in frame. The actual detection data is a Detection2DArray topic. The right screen is the manual ego vehicle control screen. The center shows just the raw point cloud from carla and the carla UI screen can be seen under it all. 
+![](/wiki/Camera-detection-demo.gif)
 
 ## TODO
 - Add camera network
