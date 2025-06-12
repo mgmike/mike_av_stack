@@ -31,7 +31,7 @@ town = 'Town03'
 # Synchronous mode
 synchronous_mode = ''
 synchronous_mode_wait_for_vehicle_control_command = ''
-fixed_delta_seconds = '0.008333333'
+fixed_delta_seconds = '0'
 
 # Localization settings
 map_name = "map.pcd"
