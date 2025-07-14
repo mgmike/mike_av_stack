@@ -7,3 +7,4 @@ src/ros_tutorials
 src/mike_av_stack/scripts/__pycache__
 src/mike_av_stack/scripts/localization/maps
 *.pyc
+.vscode/settings.json
