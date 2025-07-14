@@ -1,8 +1,13 @@
 # Autonomous car simulator
 
-I am using the Carla simulator bult on Unreal Engine to run simulations, and using ROS to send data across modules. The aim to make the project portible and to have each module abstracted such that I can run each module independent of the others and independent of Carla and simulation. My plans for the future are two fold. First, I want to run a Carla simulation on computer A, and send ros topics over a local network to computer B which then runs the modules. With this framework in place, it will be easy to impliment in a real controlled environment. For instance, raspberry pi A collects camera and lidar data from real sensors attached to a vehcile then sends ros topics to computer B also in the vehicle running the modules.
+### Intro
+The aim of this project to make a portable navigation stack where each module is abstracted such that I can run each module independent of the others and independent of Carla and simulation. My plans for the future are two fold. First, I want to run a Carla simulation on computer A, and send ros topics over a local network to computer B which then runs the modules. With this framework in place, it will be easy to impliment in a real controlled environment. For instance, raspberry pi A collects camera and lidar data from real sensors attached to a vehcile then sends ros topics to computer B also in the vehicle running the modules. Next, it should be scalable in terms of number of ego vehicles and sensors on each. It should also be data independant and should be able to run on simulator data, rosbags or other downloaded data, and real time sensor data. 
 
-I have already adapted the sensor fusion and localization modules into the project and I plan on adding path planning, controls and behavior in. 
+### Features
+Carla simulator, bult on Unreal Engine, is used to run simulations, and ROS2 Foxy used to send data across modules. The Pyhton3 base stack running on the host machine is responsible for initializing simulation, support, visualization, and helper tools. Docker is used to isolate the Sensor Fusion and Localization modules and their dependencies. ROS2 topics are able to communicate between the host and the Docker containers. 
+
+The Python 3 Sensor Fusion module uses FPN Resnet for detection for camera and BEV lidar scans. Detections are tracked and Kalman Filters are used to update and predict each detection. The detection algorithms are asynchronous so once a new Image or point cloud is published from Carla, it will be processed and the result tracked. 
+
 
 # Requirements
 
@@ -10,8 +15,8 @@ OS: Ubuntu 20.04\
 Unreal engine: 4.26\
 [carla-simulator: 0.9.13](https://carla-releases.s3.eu-west-3.amazonaws.com/Linux/CARLA_0.9.13.tar.gz)\
 Ros (apt installation): Foxy\
-[carla-ros-bridge/bionic: 0.9.10-1](https://carla.readthedocs.io/projects/ros-bridge/en/latest/ros_installation_ros2/)
-[PCL point cloud]()
+[carla-ros-bridge/bionic: 0.9.10-1](https://carla.readthedocs.io/projects/ros-bridge/en/latest/ros_installation_ros2/) \
+[PCL point cloud]() \
 [ros2_numpy](https://github.com/Box-Robotics/ros2_numpy) \
 Docker
 
