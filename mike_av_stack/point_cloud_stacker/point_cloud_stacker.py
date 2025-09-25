@@ -20,7 +20,7 @@ class Combiner(Node):
         qos_profile = QoSProfile(
             reliability=QoSReliabilityPolicy.RMW_QOS_POLICY_RELIABILITY_BEST_EFFORT,
             history=QoSHistoryPolicy.RMW_QOS_POLICY_HISTORY_KEEP_LAST,
-            depth=1
+            depth=5
         )
         self.subscriber_combiner = self.create_subscription(
             msg_type=PointCloud2,

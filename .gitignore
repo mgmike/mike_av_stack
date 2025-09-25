@@ -1,6 +1,8 @@
 .vscode/
 cache/
 log/
+build/
+install/
 *.pyc
 *.pt
 *.zip
